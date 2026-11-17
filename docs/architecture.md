@@ -58,6 +58,12 @@ A backup is one JSON file with the full item list and each photo embedded as a d
 
 Import is additive and idempotent: an item is skipped when its `name` + `createdAt` key already exists, so importing the same file twice does not duplicate the wardrobe. Malformed top-level files fail with a readable message; individual malformed items are skipped and counted. Photos make backups personal data, so the UI warns the user to keep the file safe.
 
+### `src/lib/storage.ts`
+
+Wraps `navigator.storage` so the UI never calls it directly. `getStorageUsage` returns usage, quota, and a percentage from `estimate()`, plus the persisted flag; `requestPersistentStorage` asks `persist()` and swallows a rejection. `formatBytes` renders a friendly size, and `isQuotaError` recognises the `QuotaExceededError` family so both save and import can show a specific "out of storage" message instead of a generic failure.
+
+`StorageStatus` renders the meter inside the backup panel and keeps three states distinct: checking, unsupported, and reported. It shows an alert above 85% and, if the browser refuses persistence, tells the user to keep a backup.
+
 ### `src/lib/colors.ts`
 
 Color extraction is deterministic and local:

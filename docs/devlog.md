@@ -2,6 +2,16 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-17 — M1: storage quota states
+
+- Added a local storage meter to the backup panel, built on `navigator.storage.estimate()`.
+- Added a "Protect local data" action that calls `navigator.storage.persist()` and reports whether the browser agreed.
+- Handling covers the checking, unsupported, and reported states, plus an alert above 85% usage.
+- Saving a photo and importing a backup now detect `QuotaExceededError` and explain what to do instead of failing silently.
+- Verified the meter and the persistence message in a browser.
+
+**Next:** crop, tests, and background removal.
+
 ## 2026-11-17 — M1: back up and restore
 
 - Added a versioned JSON backup that embeds each photo as a data URL.

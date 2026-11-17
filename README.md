@@ -21,6 +21,7 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 - Mark a piece clean, needs wash, or in laundry
 - Remove a piece
 - Local persistence with IndexedDB — refresh and it is still there
+- See local storage usage, request persistent storage, and get a clear warning when it runs low
 
 ![Add a piece](screenshots/add-item-filled.png)
 
@@ -97,6 +98,7 @@ src/
     ItemDetail.tsx        item dialog with edit mode
     ItemForm.tsx          shared add/edit form and photo pipeline
     BackupPanel.tsx       export/import controls and status
+    StorageStatus.tsx     storage usage meter and persistence request
     AddItemView.tsx       add page shell
     ComingSoon.tsx        roadmap placeholders
   hooks/
@@ -105,6 +107,7 @@ src/
     backup.ts             JSON export/import with embedded photos
     colors.ts             k-means palette extraction + color names
     images.ts             image validation and WebP compression
+    storage.ts            storage estimate, persistence, quota detection
 docs/                     product, architecture, setup, roadmap, ADRs
 screenshots/              documentation screenshots
 ```

@@ -1,6 +1,8 @@
 import { Archive, Download, LoaderCircle, Upload } from 'lucide-react'
 import { useRef, useState, type ChangeEvent } from 'react'
 import { downloadBackup, importBackup } from '../lib/backup'
+import { isQuotaError } from '../lib/storage'
+import { StorageStatus } from './StorageStatus'
 
 interface BackupPanelProps {
   itemCount: number
@@ -82,8 +84,9 @@ export function BackupPanel({ itemCount }: BackupPanelProps) {
     } catch (error) {
       setStatus({
         tone: 'error',
-        message:
-          error instanceof Error
+        message: isQuotaError(error)
+          ? 'This browser is out of storage. Export a backup, remove a few pieces or free space, then try again.'
+          : error instanceof Error
             ? error.message
             : 'Could not import that backup.',
       })
@@ -175,6 +178,8 @@ export function BackupPanel({ itemCount }: BackupPanelProps) {
           {status.message}
         </p>
       )}
+
+      <StorageStatus itemCount={itemCount} />
     </section>
   )
 }

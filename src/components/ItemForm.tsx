@@ -19,6 +19,7 @@ import { db } from '../db'
 import { useObjectUrl } from '../hooks/useObjectUrl'
 import { extractPalette, nameColor } from '../lib/colors'
 import { prepareImage, validateImageFile } from '../lib/images'
+import { isQuotaError } from '../lib/storage'
 import {
   CATEGORY_OPTIONS,
   FORMALITY_LABELS,
@@ -206,11 +207,13 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
       }
 
       onSaved()
-    } catch {
+    } catch (error) {
       setError(
-        isEditing
-          ? 'Could not save your changes. Try again.'
-          : 'Could not save that photo. Try a different image.',
+        isQuotaError(error)
+          ? 'This browser is out of storage. Export a backup, remove a few pieces or free space, then try again.'
+          : isEditing
+            ? 'Could not save your changes. Try again.'
+            : 'Could not save that photo. Try a different image.',
       )
     } finally {
       setSaving(false)
