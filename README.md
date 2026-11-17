@@ -2,7 +2,7 @@
 
 A local-first virtual wardrobe. Add a garment with one photo, let the app pull its main colors, and build a closet you can actually use. The long-term goal is a daily outfit suggestion based on the weather, the occasion, and what is clean.
 
-> **Status: M1 complete.** Add, edit, crop, cut out, and back up a local wardrobe. Everything is stored in your browser — no account, no backend, no paid API.
+> **Status: M2 in progress.** Add, edit, crop, cut out, and back up a local wardrobe, then build and save looks from it. Everything is stored in your browser — no account, no backend, no paid API.
 
 **Live:** https://hanandibud.github.io/wardrobe/
 
@@ -19,6 +19,8 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 - Export the whole wardrobe, photos included, to one JSON file
 - Import that file on another device or after clearing browser data
 - Browse, search, and filter the wardrobe
+- Build an outfit from pieces you own, with a name, occasion, and seasons
+- Save looks and browse them newest first
 - Open a piece to see its details
 - Mark a piece clean, needs wash, or in laundry
 - Remove a piece
@@ -35,9 +37,13 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 
 ![Back up and restore](screenshots/backup-panel.png)
 
+![Build an outfit](screenshots/outfits-builder.png)
+
+![Saved outfits](screenshots/outfits-list.png)
+
 ## Planned
 
-- Outfit builder and saved looks
+- Outfit detail with rename and delete
 - Weather-aware daily suggestions
 - Wear history and feedback
 - Installable PWA
@@ -104,6 +110,9 @@ src/
     ItemCard.tsx          wardrobe card
     ItemDetail.tsx        item dialog with edit mode
     ItemForm.tsx          shared add/edit form and photo pipeline
+    ItemThumbnail.tsx     small decorated image shared by outfit views
+    OutfitsView.tsx       saved looks grid, empty states, builder switch
+    OutfitBuilder.tsx     name, occasion, seasons, piece picker
     CropDialog.tsx        crop frame with drag and resize handles
     BackupPanel.tsx       export/import controls and status
     StorageStatus.tsx     storage usage meter and persistence request
@@ -117,6 +126,7 @@ src/
     crop.ts               crop geometry and canvas cropping
     cutout.ts             in-browser background removal wrapper
     images.ts             image validation and WebP compression
+    outfits.ts            selection toggling, category groups, item resolution
     storage.ts            storage estimate, persistence, quota detection
     *.test.ts             Vitest unit tests for the pure logic
 docs/                     product, architecture, setup, roadmap, ADRs

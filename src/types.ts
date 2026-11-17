@@ -37,6 +37,19 @@ export type ItemStatus = (typeof STATUS_OPTIONS)[number]['value']
 export const LEVELS = [1, 2, 3, 4, 5] as const
 export type Level = (typeof LEVELS)[number]
 
+export const OCCASION_OPTIONS = [
+  { value: 'casual', label: 'Casual' },
+  { value: 'work', label: 'Work' },
+  { value: 'smart', label: 'Smart' },
+  { value: 'formal', label: 'Formal' },
+] as const
+
+export type Occasion = (typeof OCCASION_OPTIONS)[number]['value']
+
+export const OCCASION_LABELS = Object.fromEntries(
+  OCCASION_OPTIONS.map((option) => [option.value, option.label]),
+) as Record<Occasion, string>
+
 export const WARMTH_LABELS: Record<Level, string> = {
   1: 'Very light',
   2: 'Light',
@@ -72,7 +85,8 @@ export interface Outfit {
   id?: number
   name: string
   itemIds: number[]
-  occasion: string
+  occasion: Occasion
+  seasons: Season[]
   createdAt: number
 }
 

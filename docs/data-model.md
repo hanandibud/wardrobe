@@ -24,7 +24,8 @@ interface Outfit {
   id?: number
   name: string
   itemIds: number[]
-  occasion: string
+  occasion: Occasion
+  seasons: Season[]
   createdAt: number
 }
 
@@ -43,6 +44,7 @@ interface WearEvent {
 Category = 'top' | 'bottom' | 'dress' | 'outerwear' | 'shoes' | 'accessory'
 Season = 'spring' | 'summer' | 'autumn' | 'winter'
 ItemStatus = 'clean' | 'dirty' | 'laundry'
+Occasion = 'casual' | 'work' | 'smart' | 'formal'
 Level = 1 | 2 | 3 | 4 | 5
 ```
 
@@ -63,6 +65,7 @@ Indexes are chosen for the planned queries:
 - wardrobe grid: `createdAt` (reverse order)
 - filters: `category`, `status`
 - recency: `lastWornAt`
+- outfits: `createdAt` (newest look first)
 - wear history: `wornOn`, `outfitId`
 
 ## Storage notes
@@ -70,7 +73,9 @@ Indexes are chosen for the planned queries:
 - Images are Blobs, not data URLs. Blobs avoid base64 inflation and are directly usable with `URL.createObjectURL`.
 - Images are downscaled to a 1600 px longest edge and encoded as WebP. A typical phone photo becomes a few hundred KB.
 - `colors` stores hex strings in sRGB. The extraction pipeline works in Lab but persists hex for easy CSS rendering.
-- Deleting an item does not yet clean up `outfits.itemIds` references. The outfit UI must filter missing IDs or perform a cleanup transaction.
+- `Outfit.itemIds` keeps the order the pieces were picked, so a look renders as it was built. The builder toggles a piece on and off, so an id can never appear twice.
+- `occasion` is a four-value union and `seasons` is a `Season[]`. Both live inline in the outfit row, so adding them needed no Dexie version bump — no new index was required.
+- Deleting an item does not remove its id from `outfits.itemIds`. `resolveOutfitItems` filters missing ids at read time, so an outfit simply shows the pieces that still exist.
 
 ## Backup format (M1)
 

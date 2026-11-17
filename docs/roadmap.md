@@ -35,15 +35,17 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 
 ## M2 — Outfits
 
-- [ ] Outfit builder from wardrobe items
+- [x] Outfit builder from wardrobe items
 - [ ] Save, rename, delete outfits
-- [ ] Occasion and season fields
+- [x] Occasion and season fields
 - [ ] Outfit detail view
 - [ ] “Wore this today” action
 - [ ] Wear history list
-- [ ] Prevent duplicate items in one outfit
+- [x] Prevent duplicate items in one outfit
 
 **Acceptance:** build three outfits from real clothes, save them, log one as worn, and see it in history.
+
+**Plan (2026-11-18):** M2 ships as three slices so each stays reviewable: build and save with a list, then an outfit detail with rename and delete, then “wore this today” plus history.
 
 ## M3 — Daily suggestion
 

@@ -1,6 +1,6 @@
 # Architecture
 
-## Current shape (M0)
+## Current shape (M2 in progress)
 
 ```mermaid
 flowchart LR
@@ -37,7 +37,7 @@ One form powers both capture and editing. It seeds state from an optional saved 
 Dexie database named `wardrobe` with three tables:
 
 - `items` — wardrobe pieces
-- `outfits` — saved combinations (schema ready, UI later)
+- `outfits` — saved combinations of item ids, with occasion and seasons
 - `wearEvents` — wear history and feedback (schema ready, UI later)
 
 Images are stored as `Blob` values inside the item row. The current schema version is 1. Future schema changes must add a new `db.version(n).stores(...)` migration rather than editing version 1.
@@ -67,6 +67,27 @@ Wraps the in-browser cutout so the form never imports the model directly. `cutOu
 The library memoizes model loading by `JSON.stringify(config)`, which means a failed load stays failed for the rest of the page session. `cutoutConfig` therefore carries a small attempt offset; since a PNG ignores `quality`, the offset changes only the memo key. That is what makes Retry work without a page reload.
 
 The cutout only replaces the working photo in the form. Saving is still deferred, so a bad cutout is discarded by leaving the form.
+
+### `src/lib/outfits.ts`
+
+Pure helpers behind the outfit UI, kept out of the components so they are testable:
+
+- `toggleItemSelection` adds a piece or removes it, and can never produce a duplicate.
+- `groupItemsByCategory` puts the wardrobe in category order for the picker and drops empty groups.
+- `resolveOutfitItems` maps saved ids back to rows in the saved order; ids whose item was deleted simply disappear.
+- `pieceCountLabel` handles the singular/plural copy.
+
+### `src/components/OutfitsView.tsx`
+
+Owns the outfits tab. A `useLiveQuery` reads `outfits` newest first. The page has three states: wardrobe empty (send the user to Add), no saved looks, and the card grid. Each card shows up to four pieces in a fixed collage, the occasion, the name, the piece count, and the seasons. The collage sits in an absolutely positioned grid inside an `aspect-square` frame so a tall photo cannot stretch the card. Switching to the builder is local state; saving returns to the list with a toast.
+
+### `src/components/OutfitBuilder.tsx`
+
+The build form: name, one occasion, any seasons, and a category-grouped piece picker. A sticky summary shows the running count and up to eight thumbnails, and the save button stays disabled until the wardrobe has something in it. Validation is inline: a name is required and at least one piece must be picked. Writes go straight to `db.outfits.add`; there is no draft table.
+
+### `src/components/ItemThumbnail.tsx`
+
+A shared decorative thumbnail for outfit collages and summary strips. It creates and revokes an object URL for the item Blob, marks the image `aria-hidden`, and relies on the name rendered beside it. Pieces without a photo fall back to a quiet "No photo" block.
 
 ### `src/lib/backup.ts`
 
@@ -106,6 +127,7 @@ The canvas work is a thin wrapper: `paletteFromImage` takes a raw RGBA buffer an
 - `backup.test.ts` — version checks, broken files, skipped items, and field filtering.
 - `storage.test.ts` — byte formatting and quota-error detection.
 - `cutout.test.ts` — progress-key wording and the retry memo key for the cutout config.
+- `outfits.test.ts` — toggling without duplicates, category grouping, resolving deleted items, and the piece count copy.
 
 The canvas, IndexedDB, and pointer-drag paths are verified in a browser instead; they are covered by the manual checks recorded in the devlog. CI runs the tests between typecheck and build.
 

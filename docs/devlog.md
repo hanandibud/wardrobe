@@ -2,6 +2,18 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-18 — M2: build and save an outfit
+
+- The Outfits tab is now a real page: a newest-first card grid, a "Build an outfit" action, and separate empty states for an empty wardrobe and an empty outfit list.
+- Added the builder: name, one of four occasions (`casual | work | smart | formal`), any seasons, and a picker grouped by category. A sticky summary tracks the pieces as they are picked.
+- A piece toggles on and off, so the same item can never be saved twice in one look. The pure `toggleItemSelection` helper has a test that presses the same piece five times and still ends with one id.
+- Outfit cards show a four-piece collage, occasion, name, piece count, and seasons. The collage is an absolutely positioned grid inside an `aspect-square` frame; without that, a tall photo stretched the card far past its intended height.
+- Deleted wardrobe items are filtered out by `resolveOutfitItems` at read time, so an outfit keeps working and simply shows the pieces that remain.
+- Added `outfits.test.ts` (12 tests): toggling, grouping order, missing ids, and count copy. Total suite is now 75.
+- Verified in a browser at 1440 px and 390 px: build a look, toggle the same piece three times, save, reload, and the card is still there with two unique ids. No horizontal overflow at 390 px.
+
+**Next:** outfit detail with rename and delete.
+
 ## 2026-11-17 — M1: retrying a failed cutout
 
 - `@imgly/background-removal` memoizes model loading by `JSON.stringify(config)`, so a load that failed stayed failed for the rest of the page session and the Retry button did nothing.

@@ -1,10 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, Layers, LoaderCircle, Lock, Sun } from 'lucide-react'
+import { Check, LoaderCircle, Lock, Sun } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { AddItemView } from './components/AddItemView'
 import { ComingSoon } from './components/ComingSoon'
 import { Header } from './components/Header'
 import { ItemDetail } from './components/ItemDetail'
+import { OutfitsView } from './components/OutfitsView'
 import { WardrobeView } from './components/WardrobeView'
 import { db } from './db'
 import type { ItemStatus, Tab } from './types'
@@ -87,20 +88,16 @@ function App() {
 
         {tab === 'add' && <AddItemView onSaved={handleSaved} />}
 
-        {tab === 'outfits' && (
-          <ComingSoon
-            icon={Layers}
-            eyebrow="Milestone two"
-            title="Outfits you already love, ready to repeat."
-            description="Save combinations from your own wardrobe, plan them for an occasion, and stop rebuilding the same look from scratch."
-            steps={[
-              'Build a look from pieces you own.',
-              'Save it with an occasion and season.',
-              'Reuse it on the days you do not want to think.',
-            ]}
-            onAddItem={() => setTab('add')}
-          />
-        )}
+        {tab === 'outfits' &&
+          (items ? (
+            <OutfitsView
+              items={items}
+              onAddItem={() => setTab('add')}
+              onSaved={setToast}
+            />
+          ) : (
+            <LoadingView />
+          ))}
 
         {tab === 'today' && (
           <ComingSoon
@@ -124,7 +121,7 @@ function App() {
             <Lock className="h-3.5 w-3.5" />
             Local-first. Your photos never leave this browser.
           </p>
-          <p>Early build · M1 in progress</p>
+          <p>Early build · M2 in progress</p>
         </div>
       </footer>
 
