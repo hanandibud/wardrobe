@@ -104,7 +104,7 @@ Out:
 | --- | --- |
 | Data entry is too slow | One photo, auto colors, sensible defaults, confirm-don't-type |
 | Photos are too large for browser storage | Downscale to 1600 px and encode WebP before storing |
-| Background removal is hard on worn outfits | Start with flat lays and one item per photo; add cutouts later |
+| Background removal is hard on worn outfits | Start with flat lays and one item per photo; add cutouts later (in-browser cutout shipped in M1) |
 | Recommendations feel random | Rules first, explain every suggestion, learn from simple feedback |
 | Skin-tone advice feels gimmicky | Treat it as an editable preference, never a diagnosis |
 | Scope creep | One milestone at a time; the roadmap is the contract |
@@ -113,8 +113,8 @@ Out:
 
 ## Open questions
 
-- Is manual crop enough for M1, or does background removal need to ship with it?
-- Should cutouts be generated in the browser or by a local Python helper?
+- ~~Is manual crop enough for M1, or does background removal need to ship with it?~~ Both shipped in M1.
+- ~~Should cutouts be generated in the browser or by a local Python helper?~~ In the browser; see ADR 0003.
 - Which signal is strongest for recommendations: color harmony, formality, or recency?
 - How many items does the user need before a suggestion feels useful?
 - Should the app stay local-first forever, or add optional sync once the core is solid?

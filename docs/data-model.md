@@ -112,7 +112,6 @@ Add these with a Dexie version bump when the feature lands:
 ```ts
 interface WardrobeItem {
   // ...
-  cutout?: Blob              // transparent PNG/WebP
   palette?: string[]         // optional extended palette
   brand?: string
   size?: string

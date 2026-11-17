@@ -2,7 +2,7 @@
 
 A local-first virtual wardrobe. Add a garment with one photo, let the app pull its main colors, and build a closet you can actually use. The long-term goal is a daily outfit suggestion based on the weather, the occasion, and what is clean.
 
-> **Status: M1 in progress.** Add, edit, and browse a local wardrobe. Everything is stored in your browser — no account, no backend, no paid API.
+> **Status: M1 complete.** Add, edit, crop, cut out, and back up a local wardrobe. Everything is stored in your browser — no account, no backend, no paid API.
 
 **Live:** https://hanandibud.github.io/wardrobe/
 
@@ -12,6 +12,7 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 
 - Add a piece from a photo (camera or library on mobile)
 - Crop the photo before saving, or re-crop a saved one, with free, square, 4:5, and 3:4 frames
+- Remove the background in the browser, leaving the piece on a transparent cutout
 - Detect the main colors automatically in CIELAB space
 - Record category, warmth, formality, seasons, availability, and notes
 - Edit any detail of a saved piece, including replacing its photo
@@ -28,13 +29,14 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 
 ![Crop a photo](screenshots/crop-dialog.png)
 
+![Remove the background](screenshots/cutout-form.png)
+
 ![Edit a piece](screenshots/edit-item.png)
 
 ![Back up and restore](screenshots/backup-panel.png)
 
 ## Planned
 
-- Manual crop and background removal
 - Outfit builder and saved looks
 - Weather-aware daily suggestions
 - Wear history and feedback
@@ -53,7 +55,7 @@ The MVP intentionally avoids services that can start charging:
 | Database | IndexedDB (browser) | Free |
 | Auth | None — single local user | Free |
 | Weather | Open-Meteo | Free, no API key |
-| Background removal | Local `rembg` (optional) | Free |
+| Background removal | In-browser model (`@imgly/background-removal`) | Free; model fetched once from a public CDN |
 | CI | GitHub Actions | Free tier |
 
 No Vercel, Supabase, or paid AI API is required. If the app later needs multi-device sync, Supabase's free tier is a reasonable next step — but it is not part of the local-first MVP.
@@ -64,6 +66,7 @@ No Vercel, Supabase, or paid AI API is required. If the app later needs multi-de
 - Tailwind CSS v4
 - Dexie (IndexedDB)
 - `culori` for color conversion and Delta E
+- `@imgly/background-removal` on `onnxruntime-web` for the in-browser cutout
 - Lucide icons
 - Open-Meteo (planned)
 - GitHub Pages (live)
@@ -112,6 +115,7 @@ src/
     backup.ts             JSON export/import with embedded photos
     colors.ts             k-means palette extraction + color names
     crop.ts               crop geometry and canvas cropping
+    cutout.ts             in-browser background removal wrapper
     images.ts             image validation and WebP compression
     storage.ts            storage estimate, persistence, quota detection
     *.test.ts             Vitest unit tests for the pure logic
@@ -122,7 +126,7 @@ screenshots/              documentation screenshots
 ## Privacy
 
 - Photos and wardrobe data are stored in IndexedDB in your browser.
-- Nothing is uploaded by the current app.
+- Nothing is uploaded by the current app. Background removal runs locally too — only the model file is downloaded, and the photo never leaves the device.
 - The future weather request will send only coordinates to Open-Meteo.
 - IndexedDB is per browser and per device. Clearing site data deletes the wardrobe unless you keep a backup. Export/import is built in.
 - Backup files contain your photos. Treat them like personal documents and do not commit or share them.
@@ -139,4 +143,9 @@ screenshots/              documentation screenshots
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+AGPL-3.0-or-later. See [LICENSE](LICENSE).
+
+The app is licensed under the AGPL because its background removal depends on
+[`@imgly/background-removal`](https://github.com/imgly/background-removal-js), which is
+AGPL-3.0. Everything else in the repo is original work. If you fork it, keep the license and
+publish your source under the same terms.

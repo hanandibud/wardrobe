@@ -60,6 +60,12 @@ Pure geometry plus one canvas call. `fitRect` places the photo inside the crop s
 
 A modal that opens whenever a photo is chosen or the user presses Crop on an existing one. The frame is dragged with pointer capture, four corners resize it, and four shape presets (free, square, 4:5, 3:4) lock the ratio. The photo is inset from the stage edge so the handles never sit on the clipped boundary. Escape and the backdrop cancel without touching the saved photo; the cropped result only reaches the form after Use this crop.
 
+### `src/lib/cutout.ts`
+
+Wraps the in-browser cutout so the form never imports the model directly. `cutOutBackground` lazily imports `@imgly/background-removal`, runs the smallest model (`isnet_quint8`), and returns a PNG so transparency survives. The model and its WASM runtime are fetched on first use from the package's public CDN — never bundled into the app — which keeps the main chunk small and needs no key. Progress keys map through the pure `describeCutoutStage`, so the UI can show Downloading the model → Removing the background → Preparing the photo.
+
+The cutout only replaces the working photo in the form. Saving is still deferred, so a bad cutout is discarded by leaving the form.
+
 ### `src/lib/backup.ts`
 
 A backup is one JSON file with the full item list and each photo embedded as a data URL. `downloadBackup` reads the items in `createdAt` order, converts every Blob, and triggers a browser download. `importBackup` parses and validates the file, converts the images back to Blobs, and bulk-adds them in one transaction.
@@ -97,6 +103,7 @@ The canvas work is a thin wrapper: `paletteFromImage` takes a raw RGBA buffer an
 - `images.test.ts` — the accepted types and the 20 MB limit.
 - `backup.test.ts` — version checks, broken files, skipped items, and field filtering.
 - `storage.test.ts` — byte formatting and quota-error detection.
+- `cutout.test.ts` — progress-key wording for the cutout stages.
 
 The canvas, IndexedDB, and pointer-drag paths are verified in a browser instead; they are covered by the manual checks recorded in the devlog. CI runs the tests between typecheck and build.
 
@@ -127,14 +134,16 @@ sequenceDiagram
 
 ## Planned pieces
 
-### Cutouts
+## Background removal
 
-Two viable approaches, in order of simplicity:
+Shipped in M1 as an in-browser cutout:
 
-1. **Local helper (M1):** a Python script or small FastAPI service using `rembg` and/or SAM to produce transparent PNG cutouts. The app imports the cutout next to the original.
-2. **In-browser (later):** an ONNX/WASM segmentation model. This is better for a phone-only flow but adds model download size, licensing, and performance constraints.
+- The photo is passed to `@imgly/background-removal` in the same tab; nothing is uploaded.
+- The model is a ~40 MB `isnet_quint8` ONNX file fetched on first use from a public CDN, so the catalog keeps working offline after the first cutout while the model stays cached.
+- The output is a PNG, so the transparent background survives into the stored image. Color extraction skips pixels below alpha 180, so the palette becomes garment-only.
+- The dependency is AGPL-3.0, which is why the repo license is AGPL-3.0.
 
-Do not let cutout research block the catalog UI. The app already works without it.
+Limits to remember: inference is CPU-bound and takes a few seconds, the first run is download-bound, and a blurry or busy background still yields a rough mask. The user can always skip the cutout.
 
 ### Weather
 

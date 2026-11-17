@@ -9,7 +9,7 @@ Checked on this machine:
 - Node.js `v24.21.0`
 - npm `11.19.0`
 - Git `2.56.0`
-- Python `3.12.10` (optional, for local background removal later)
+- Python `3.12.10` (optional, only for offline `rembg` experiments)
 - GitHub CLI `2.104.0` (installed during setup)
 - `winget` for future installs
 
@@ -115,7 +115,8 @@ The dev server is already configured with `host: true`.
 
 ## Optional: local background removal
 
-This is not needed for M0. When M1 starts:
+Not needed — the app removes backgrounds in the browser. If you want a higher-quality,
+scriptable cutout for experiments, `rembg` still works offline:
 
 ```powershell
 python -m venv .venv
@@ -124,7 +125,7 @@ pip install rembg
 rembg i input.jpg output.png
 ```
 
-Keep experiment images and outputs out of Git. The app will import the resulting transparent PNG.
+Keep experiment images and outputs out of Git. You can import the resulting transparent PNG through the normal add flow.
 
 ## Free API notes
 

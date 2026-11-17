@@ -2,6 +2,19 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-17 — M1: in-browser background removal
+
+- Added a "Remove background" action to the shared item form, below the photo card, with working, progress, and failed states.
+- Cutouts run locally through `@imgly/background-removal` on the smallest `isnet_quint8` model, imported lazily so the main bundle stays small.
+- The model and its WASM runtime come from the package's public CDN on first use. No key, no account, and the photo never leaves the browser.
+- The result is a PNG, so the transparent background survives. Color extraction already skips pixels below alpha 180, so the palette comes back garment-only.
+- Progress is shown as Downloading the model → Removing the background → Preparing the photo, from the pure `describeCutoutStage` helper.
+- `@imgly/background-removal` is AGPL-3.0, so the repo license moved from MIT to AGPL-3.0. `LICENSE` is now the verbatim AGPL text and `package.json` declares `AGPL-3.0-or-later`. Recorded in ADR 0003.
+- Added a test for the progress-key wording.
+- Verified in a browser: cut out a synthetic flat lay, watch the progress, confirm the saved card shows the cutout and the palette drops the background colors.
+
+**Next:** M2 — the outfit builder.
+
 ## 2026-11-17 — M1: unit tests
 
 - Added Vitest as a dev dependency and an `npm test` script; CI runs it between typecheck and build.

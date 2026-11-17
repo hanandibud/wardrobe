@@ -22,7 +22,7 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 
 - [x] Manual crop before save
 - [x] Edit an existing item
-- [ ] Background removal / cutout pipeline
+- [x] Background removal / cutout pipeline
 - [x] Export wardrobe to a zip or JSON backup
 - [x] Import a backup
 - [x] Empty/loading/error states for storage quota
@@ -31,7 +31,7 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 
 **Acceptance:** add a piece, crop it, remove its background, edit its name, export the wardrobe, clear site data, import the backup, and everything returns.
 
-**Decision needed:** local Python `rembg` helper vs in-browser segmentation. Start with the helper if it unblocks M1 faster; move in-browser only when the phone-only flow matters.
+**Decision (2026-11-17):** in-browser segmentation with `@imgly/background-removal`. It keeps the phone-only, no-install flow and needs no key or paid tier; the trade-off is an AGPL-3.0 dependency, so the repo license moved from MIT to AGPL-3.0. The first cutout downloads a ~40 MB model (`isnet_quint8`) from a free CDN.
 
 ## M2 — Outfits
 

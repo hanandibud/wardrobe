@@ -19,7 +19,7 @@ Build a static, local-first React SPA:
 - No backend, no authentication, no cloud storage in the MVP
 - GitHub Pages for hosting (free for public repositories)
 - Open-Meteo for weather later (free, no API key)
-- Local `rembg` or browser-side segmentation for cutouts later
+- Local `rembg` or browser-side segmentation for cutouts later (chosen: in-browser, see ADR 0003)
 
 ## Consequences
 

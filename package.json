@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "license": "AGPL-3.0-or-later",
   "engines": {
     "node": ">=20"
   },
@@ -15,11 +16,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@imgly/background-removal": "^1.7.0",
     "@tailwindcss/vite": "^4.3.5",
     "culori": "^4.0.2",
     "dexie": "^4.4.7",
     "dexie-react-hooks": "^4.4.0",
     "lucide-react": "^1.74.0",
+    "onnxruntime-web": "^1.21.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "tailwindcss": "^4.3.5"

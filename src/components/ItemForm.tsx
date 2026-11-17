@@ -5,6 +5,7 @@ import {
   ImagePlus,
   Lock,
   Plus,
+  Scissors,
   Sparkles,
   X,
 } from 'lucide-react'
@@ -19,6 +20,7 @@ import {
 import { db } from '../db'
 import { useObjectUrl } from '../hooks/useObjectUrl'
 import { extractPalette, nameColor } from '../lib/colors'
+import { cutOutBackground, type CutoutProgress } from '../lib/cutout'
 import { prepareImage, validateImageFile } from '../lib/images'
 import { isQuotaError } from '../lib/storage'
 import {
@@ -43,6 +45,7 @@ interface ItemFormProps {
 }
 
 type PaletteState = 'idle' | 'detecting' | 'ready' | 'failed'
+type CutoutState = 'idle' | 'working' | 'failed'
 
 const inputClass =
   'h-11 w-full rounded-xl border border-line bg-card px-3.5 text-sm text-ink placeholder:text-muted/60 focus:border-ink/40 focus:outline-none focus:ring-2 focus:ring-accent/20'
@@ -88,6 +91,9 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
   } | null>(null)
   const [customColor, setCustomColor] = useState('#8a6f5a')
   const [paletteState, setPaletteState] = useState<PaletteState>('idle')
+  const [cutoutState, setCutoutState] = useState<CutoutState>('idle')
+  const [cutoutProgress, setCutoutProgress] = useState<CutoutProgress | null>(null)
+  const [cutoutError, setCutoutError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -107,6 +113,8 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
     setError(null)
     setFile(nextFile)
     setPaletteState('detecting')
+    setCutoutState('idle')
+    setCutoutError(null)
 
     const request = paletteRequest.current + 1
     paletteRequest.current = request
@@ -156,6 +164,33 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
     setFile(null)
     setColors([])
     setPaletteState('idle')
+    setCutoutState('idle')
+    setCutoutProgress(null)
+    setCutoutError(null)
+  }
+
+  async function handleRemoveBackground() {
+    const source = file ?? item?.image
+    if (!source || cutoutState === 'working') return
+
+    setError(null)
+    setCutoutError(null)
+    setCutoutState('working')
+    setCutoutProgress({ stage: 'Preparing the photo', percent: 0 })
+
+    try {
+      const cut = await cutOutBackground(source, setCutoutProgress)
+      const base = file?.name.replace(/\.[^.]+$/, '') || 'wardrobe-photo'
+      await handleFile(new File([cut], `${base}-cutout.png`, { type: 'image/png' }))
+      setCutoutState('idle')
+      setCutoutProgress(null)
+    } catch {
+      setCutoutState('failed')
+      setCutoutProgress(null)
+      setCutoutError(
+        'Could not remove the background. The first cutout needs a connection to fetch the model, so check that and try again.',
+      )
+    }
   }
 
   function addColor(color: string) {
@@ -188,6 +223,9 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
     setNotes('')
     setFile(null)
     setPaletteState('idle')
+    setCutoutState('idle')
+    setCutoutProgress(null)
+    setCutoutError(null)
     setError(null)
   }
 
@@ -347,6 +385,61 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
           <p className="mt-3 text-xs text-muted">
             Could not detect colors. Add them manually below.
           </p>
+        )}
+
+        {previewUrl && (
+          <div className="mt-3 rounded-2xl border border-line/80 bg-card p-4">
+            {cutoutState === 'working' ? (
+              <div>
+                <p className="flex items-center gap-2 text-xs font-medium text-ink">
+                  <Scissors className="h-3.5 w-3.5 animate-pulse text-accent" />
+                  <span>{cutoutProgress?.stage ?? 'Removing the background'}…</span>
+                  <span className="ml-auto font-normal tabular-nums text-muted">
+                    {cutoutProgress?.percent ?? 0}%
+                  </span>
+                </p>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-paper">
+                  <div
+                    className="h-full rounded-full bg-accent transition-[width] duration-300"
+                    style={{ width: `${cutoutProgress?.percent ?? 0}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-[11px] leading-4 text-muted">
+                  The model runs in this browser. The first cutout downloads it, so it
+                  can take a moment.
+                </p>
+              </div>
+            ) : (
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-medium text-ink">Remove background</p>
+                  <p className="mt-0.5 text-[11px] leading-4 text-muted">
+                    Cuts the piece out on a transparent background and keeps only its
+                    colors.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleRemoveBackground()}
+                  disabled={paletteState === 'detecting'}
+                  aria-label="Remove background"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-card px-3.5 py-2 text-xs font-medium text-ink transition hover:border-ink/30 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Scissors className="h-3.5 w-3.5" />
+                  {cutoutState === 'failed' ? 'Retry' : 'Cut out'}
+                </button>
+              </div>
+            )}
+
+            {cutoutState === 'failed' && cutoutError && (
+              <p
+                role="alert"
+                className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] leading-4 text-red-800"
+              >
+                {cutoutError}
+              </p>
+            )}
+          </div>
         )}
       </div>
 
