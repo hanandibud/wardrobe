@@ -6,6 +6,7 @@ import {
   type Category,
   type WardrobeItem,
 } from '../types'
+import { BackupPanel } from './BackupPanel'
 import { ItemCard } from './ItemCard'
 
 interface WardrobeViewProps {
@@ -184,6 +185,8 @@ export function WardrobeView({ items, onOpenItem, onAddItem }: WardrobeViewProps
           )}
         </>
       )}
+
+      <BackupPanel itemCount={items.length} />
     </div>
   )
 }

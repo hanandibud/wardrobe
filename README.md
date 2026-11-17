@@ -14,6 +14,8 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 - Detect the main colors automatically in CIELAB space
 - Record category, warmth, formality, seasons, availability, and notes
 - Edit any detail of a saved piece, including replacing its photo
+- Export the whole wardrobe, photos included, to one JSON file
+- Import that file on another device or after clearing browser data
 - Browse, search, and filter the wardrobe
 - Open a piece to see its details
 - Mark a piece clean, needs wash, or in laundry
@@ -24,10 +26,11 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 
 ![Edit a piece](screenshots/edit-item.png)
 
+![Back up and restore](screenshots/backup-panel.png)
+
 ## Planned
 
 - Manual crop and background removal
-- Export/import backup
 - Outfit builder and saved looks
 - Weather-aware daily suggestions
 - Wear history and feedback
@@ -93,11 +96,13 @@ src/
     ItemCard.tsx          wardrobe card
     ItemDetail.tsx        item dialog with edit mode
     ItemForm.tsx          shared add/edit form and photo pipeline
+    BackupPanel.tsx       export/import controls and status
     AddItemView.tsx       add page shell
     ComingSoon.tsx        roadmap placeholders
   hooks/
     useObjectUrl.ts       object URL lifecycle for Blob images
   lib/
+    backup.ts             JSON export/import with embedded photos
     colors.ts             k-means palette extraction + color names
     images.ts             image validation and WebP compression
 docs/                     product, architecture, setup, roadmap, ADRs
@@ -109,7 +114,8 @@ screenshots/              documentation screenshots
 - Photos and wardrobe data are stored in IndexedDB in your browser.
 - Nothing is uploaded by the current app.
 - The future weather request will send only coordinates to Open-Meteo.
-- IndexedDB is per browser and per device. Clearing site data deletes the wardrobe. Export/import is on the roadmap.
+- IndexedDB is per browser and per device. Clearing site data deletes the wardrobe unless you keep a backup. Export/import is built in.
+- Backup files contain your photos. Treat them like personal documents and do not commit or share them.
 
 ## Documentation
 

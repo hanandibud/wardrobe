@@ -2,6 +2,18 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-17 — M1: back up and restore
+
+- Added a versioned JSON backup that embeds each photo as a data URL.
+- Export downloads `wardrobe-backup-YYYY-MM-DD.json` with every piece and its details.
+- Import validates the file, restores photos as Blobs, and merges into the current wardrobe.
+- Same name + `createdAt` counts as a duplicate, so importing twice is safe.
+- Malformed items are skipped and counted; unreadable files show a readable error.
+- Backup files are capped at 100 MB and contain personal photos, so the UI says to keep them safe.
+- Verified export → clear IndexedDB → import in a browser, including a duplicate import and an invalid file.
+
+**Next:** storage quota states, crop, tests, and background removal.
+
 ## 2026-11-17 — M1: edit a saved piece
 
 - Extracted the add form into a shared `ItemForm` so capture and edit use the same fields, photo pipeline, and color detection.

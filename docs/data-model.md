@@ -72,6 +72,39 @@ Indexes are chosen for the planned queries:
 - `colors` stores hex strings in sRGB. The extraction pipeline works in Lab but persists hex for easy CSS rendering.
 - Deleting an item does not yet clean up `outfits.itemIds` references. The outfit UI must filter missing IDs or perform a cleanup transaction.
 
+## Backup format (M1)
+
+`src/lib/backup.ts` exports one versioned JSON file:
+
+```json
+{
+  "app": "wardrobe",
+  "version": 1,
+  "exportedAt": "2026-11-17T12:00:00.000Z",
+  "items": [
+    {
+      "name": "Olive linen camp shirt",
+      "category": "top",
+      "colors": ["#f6f3ee", "#60704d"],
+      "warmth": 3,
+      "formality": 2,
+      "seasons": ["spring", "summer"],
+      "status": "clean",
+      "notes": "Soft washed linen.",
+      "image": "data:image/webp;base64,...",
+      "createdAt": 1763380800000
+    }
+  ]
+}
+```
+
+- Photos are embedded as data URLs so one file restores the wardrobe.
+- Import validates the shape, merges into the current database, and skips an item when its `name` + `createdAt` already exists.
+- Invalid entries are counted and skipped. The import fails only when no valid pieces remain.
+- The file is capped at 100 MB, and the backup version must match the app's current version.
+- Outfits and wear events are not included yet; add them with a version bump when those features ship.
+- A backup contains personal photos. It must never be committed to the repository.
+
 ## Planned fields
 
 Add these with a Dexie version bump when the feature lands:
