@@ -1,6 +1,7 @@
 import {
   Camera,
   Check,
+  Crop,
   ImagePlus,
   Lock,
   Plus,
@@ -33,6 +34,7 @@ import {
   type Season,
   type WardrobeItem,
 } from '../types'
+import { CropDialog } from './CropDialog'
 
 interface ItemFormProps {
   item?: WardrobeItem
@@ -80,6 +82,10 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
   const [status, setStatus] = useState<ItemStatus>(item?.status ?? 'clean')
   const [notes, setNotes] = useState(item?.notes ?? '')
   const [file, setFile] = useState<File | null>(null)
+  const [cropSource, setCropSource] = useState<{
+    blob: Blob
+    name: string
+  } | null>(null)
   const [customColor, setCustomColor] = useState('#8a6f5a')
   const [paletteState, setPaletteState] = useState<PaletteState>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -120,7 +126,29 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
   function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
     const nextFile = event.target.files?.[0]
     event.target.value = ''
-    if (nextFile) void handleFile(nextFile)
+    if (!nextFile) return
+
+    const validationError = validateImageFile(nextFile)
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
+    setError(null)
+    setCropSource({ blob: nextFile, name: nextFile.name })
+  }
+
+  function startCropCurrent() {
+    const source = file ?? item?.image
+    if (!source) return
+
+    setError(null)
+    setCropSource({ blob: source, name: file?.name ?? 'wardrobe-photo.webp' })
+  }
+
+  function handleCropConfirm(cropped: File) {
+    setCropSource(null)
+    void handleFile(cropped)
   }
 
   function clearPhoto() {
@@ -224,7 +252,8 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
   const notesId = `${formId}-notes`
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-start">
+    <>
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-start">
       <div className="lg:sticky lg:top-28">
         <input
           ref={fileInputRef}
@@ -244,7 +273,7 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
                   alt={isEditing ? item.name : 'Selected garment'}
                   className="h-full w-full object-contain p-4"
                 />
-                <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-2">
+                <div className="absolute inset-x-3 bottom-3 flex flex-wrap items-center justify-between gap-2">
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
@@ -252,15 +281,26 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
                   >
                     {isEditing ? 'Replace photo' : 'Change photo'}
                   </button>
-                  {!isEditing && (
+                  <span className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={clearPhoto}
-                      className="rounded-full bg-card/90 px-3.5 py-2 text-xs font-medium text-muted shadow-sm backdrop-blur transition hover:bg-card hover:text-ink"
+                      onClick={startCropCurrent}
+                      aria-label="Crop photo"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-card/90 px-3.5 py-2 text-xs font-medium text-ink shadow-sm backdrop-blur transition hover:bg-card"
                     >
-                      Remove
+                      <Crop className="h-3.5 w-3.5" />
+                      Crop
                     </button>
-                  )}
+                    {!isEditing && (
+                      <button
+                        type="button"
+                        onClick={clearPhoto}
+                        className="rounded-full bg-card/90 px-3.5 py-2 text-xs font-medium text-muted shadow-sm backdrop-blur transition hover:bg-card hover:text-ink"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </span>
                 </div>
               </>
             ) : (
@@ -566,5 +606,15 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
         </div>
       </form>
     </div>
+
+      {cropSource && (
+        <CropDialog
+          blob={cropSource.blob}
+          fileName={cropSource.name}
+          onCancel={() => setCropSource(null)}
+          onConfirm={handleCropConfirm}
+        />
+      )}
+    </>
   )
 }

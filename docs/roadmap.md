@@ -20,7 +20,7 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 
 ## M1 — A catalog worth keeping
 
-- [ ] Manual crop before save
+- [x] Manual crop before save
 - [x] Edit an existing item
 - [ ] Background removal / cutout pipeline
 - [x] Export wardrobe to a zip or JSON backup

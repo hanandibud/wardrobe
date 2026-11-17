@@ -2,6 +2,19 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-17 — M1: crop before saving
+
+- Picking a photo now opens a crop step instead of committing the file straight away.
+- Added `CropDialog`: drag the frame to move it, pull a corner to resize, and pick free, square, 4:5, or 3:4.
+- Crop geometry lives in `src/lib/crop.ts` as pure functions so a corner drag cannot leave the image or break the ratio.
+- Cropping draws the selected region on a canvas and hands the result back as a WebP `File`, so the existing validation, downscaling, and color extraction still run unchanged.
+- The item editor has a Crop button, so a saved photo can be re-cropped without re-uploading it.
+- Escape and Cancel close the crop step and keep the current photo.
+- The photo is inset from the crop stage edge, so corner handles stay easy to grab.
+- Verified in a browser: crop, apply, save, and reload, plus re-cropping a saved piece and the 390 px layout.
+
+**Next:** tests, and background removal.
+
 ## 2026-11-17 — M1: storage quota states
 
 - Added a local storage meter to the backup panel, built on `navigator.storage.estimate()`.

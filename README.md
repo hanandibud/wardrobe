@@ -11,6 +11,7 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 ## What works today
 
 - Add a piece from a photo (camera or library on mobile)
+- Crop the photo before saving, or re-crop a saved one, with free, square, 4:5, and 3:4 frames
 - Detect the main colors automatically in CIELAB space
 - Record category, warmth, formality, seasons, availability, and notes
 - Edit any detail of a saved piece, including replacing its photo
@@ -24,6 +25,8 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 - See local storage usage, request persistent storage, and get a clear warning when it runs low
 
 ![Add a piece](screenshots/add-item-filled.png)
+
+![Crop a photo](screenshots/crop-dialog.png)
 
 ![Edit a piece](screenshots/edit-item.png)
 
@@ -97,6 +100,7 @@ src/
     ItemCard.tsx          wardrobe card
     ItemDetail.tsx        item dialog with edit mode
     ItemForm.tsx          shared add/edit form and photo pipeline
+    CropDialog.tsx        crop frame with drag and resize handles
     BackupPanel.tsx       export/import controls and status
     StorageStatus.tsx     storage usage meter and persistence request
     AddItemView.tsx       add page shell
@@ -106,6 +110,7 @@ src/
   lib/
     backup.ts             JSON export/import with embedded photos
     colors.ts             k-means palette extraction + color names
+    crop.ts               crop geometry and canvas cropping
     images.ts             image validation and WebP compression
     storage.ts            storage estimate, persistence, quota detection
 docs/                     product, architecture, setup, roadmap, ADRs
