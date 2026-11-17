@@ -65,6 +65,10 @@ function App() {
     setToast('Added to your wardrobe.')
   }
 
+  function handleEditSaved() {
+    setToast('Changes saved.')
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <Header activeTab={tab} itemCount={items?.length ?? 0} onTabChange={setTab} />
@@ -120,7 +124,7 @@ function App() {
             <Lock className="h-3.5 w-3.5" />
             Local-first. Your photos never leave this browser.
           </p>
-          <p>Early build · M0</p>
+          <p>Early build · M1 in progress</p>
         </div>
       </footer>
 
@@ -129,6 +133,7 @@ function App() {
           item={selectedItem}
           onClose={closeItem}
           onStatusChange={handleStatusChange}
+          onEditSaved={handleEditSaved}
           onDelete={handleDelete}
         />
       )}

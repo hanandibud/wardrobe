@@ -28,6 +28,10 @@ There is no backend, no account, and no network request in the current app. The 
 
 Owns the app shell: active tab, selected item, toast, and the live query to Dexie. It passes callbacks down; feature components stay mostly presentational.
 
+### `src/components/ItemForm.tsx`
+
+One form powers both capture and editing. It seeds state from an optional saved item, validates and compresses a new photo, extracts a palette, and writes with either `items.add` or `items.update`. `AddItemView` wraps it as a page; `ItemDetail` mounts it in edit mode with a cancel path. Replacing a photo only touches the saved Blob when the user saves the form.
+
 ### `src/db.ts`
 
 Dexie database named `wardrobe` with three tables:

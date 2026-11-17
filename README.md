@@ -2,7 +2,9 @@
 
 A local-first virtual wardrobe. Add a garment with one photo, let the app pull its main colors, and build a closet you can actually use. The long-term goal is a daily outfit suggestion based on the weather, the occasion, and what is clean.
 
-> **Status: M0.** Add pieces, detect colors, and browse the wardrobe. Everything is stored in your browser — no account, no backend, no paid API.
+> **Status: M1 in progress.** Add, edit, and browse a local wardrobe. Everything is stored in your browser — no account, no backend, no paid API.
+
+**Live:** https://hanandibud.github.io/wardrobe/
 
 ![Wardrobe home](screenshots/home.png)
 
@@ -11,6 +13,7 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 - Add a piece from a photo (camera or library on mobile)
 - Detect the main colors automatically in CIELAB space
 - Record category, warmth, formality, seasons, availability, and notes
+- Edit any detail of a saved piece, including replacing its photo
 - Browse, search, and filter the wardrobe
 - Open a piece to see its details
 - Mark a piece clean, needs wash, or in laundry
@@ -19,14 +22,16 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 
 ![Add a piece](screenshots/add-item-filled.png)
 
+![Edit a piece](screenshots/edit-item.png)
+
 ## Planned
 
 - Manual crop and background removal
+- Export/import backup
 - Outfit builder and saved looks
 - Weather-aware daily suggestions
 - Wear history and feedback
-- Export/import backup
-- Installable PWA and a free GitHub Pages deployment
+- Installable PWA
 - Skin-tone and color-preference tuning (as a preference, not a scientific claim)
 
 See [docs/roadmap.md](docs/roadmap.md) for the order and acceptance criteria.
@@ -44,7 +49,7 @@ The MVP intentionally avoids services that can start charging:
 | Background removal | Local `rembg` (optional) | Free |
 | CI | GitHub Actions | Free tier |
 
-No Vercel, Supabase, or paid AI API is required. If the app later needs multi-device sync, Supabase's free tier is a reasonable next step — but it is not part of M0.
+No Vercel, Supabase, or paid AI API is required. If the app later needs multi-device sync, Supabase's free tier is a reasonable next step — but it is not part of the local-first MVP.
 
 ## Stack
 
@@ -54,7 +59,7 @@ No Vercel, Supabase, or paid AI API is required. If the app later needs multi-de
 - `culori` for color conversion and Delta E
 - Lucide icons
 - Open-Meteo (planned)
-- GitHub Pages (planned)
+- GitHub Pages (live)
 
 ## Run it
 
@@ -86,8 +91,9 @@ src/
     Header.tsx            brand + navigation
     WardrobeView.tsx      grid, search, filters, empty state
     ItemCard.tsx          wardrobe card
-    ItemDetail.tsx        item dialog
-    AddItemView.tsx       capture form
+    ItemDetail.tsx        item dialog with edit mode
+    ItemForm.tsx          shared add/edit form and photo pipeline
+    AddItemView.tsx       add page shell
     ComingSoon.tsx        roadmap placeholders
   hooks/
     useObjectUrl.ts       object URL lifecycle for Blob images

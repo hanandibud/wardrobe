@@ -2,6 +2,17 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-17 — M1: edit a saved piece
+
+- Extracted the add form into a shared `ItemForm` so capture and edit use the same fields, photo pipeline, and color detection.
+- Added an edit mode to the item dialog: name, category, colors, warmth, formality, seasons, availability, notes, and the photo.
+- A replacement photo is compressed and color-detected locally; the saved Blob changes only after the user saves.
+- Escape now cancels editing first and closes the dialog on the second press.
+- Added a “Changes saved.” toast and an edit screenshot.
+- Verified the edit flow in a browser, including a reload, and checked the layout at 390 px.
+
+**Next:** export/import backup, storage quota states, crop, tests, and background removal.
+
 ## 2026-11-17 — M0: the wardrobe exists
 
 - Scaffolded Vite + React + TypeScript + Tailwind.

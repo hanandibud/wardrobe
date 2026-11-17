@@ -21,13 +21,13 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 ## M1 — A catalog worth keeping
 
 - [ ] Manual crop before save
-- [ ] Edit an existing item
+- [x] Edit an existing item
 - [ ] Background removal / cutout pipeline
 - [ ] Export wardrobe to a zip or JSON backup
 - [ ] Import a backup
 - [ ] Empty/loading/error states for storage quota
 - [ ] Unit tests for color extraction and image validation
-- [ ] First GitHub Actions CI run
+- [x] First GitHub Actions CI run
 
 **Acceptance:** add a piece, crop it, remove its background, edit its name, export the wardrobe, clear site data, import the backup, and everything returns.
 

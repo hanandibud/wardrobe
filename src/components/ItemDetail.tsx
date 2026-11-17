@@ -1,4 +1,4 @@
-import { Calendar, Trash2, X } from 'lucide-react'
+import { Calendar, Pencil, Trash2, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useObjectUrl } from '../hooks/useObjectUrl'
 import { nameColor } from '../lib/colors'
@@ -13,11 +13,13 @@ import {
   type Level,
   type WardrobeItem,
 } from '../types'
+import { ItemForm } from './ItemForm'
 
 interface ItemDetailProps {
   item: WardrobeItem
   onClose: () => void
   onStatusChange: (status: ItemStatus) => void
+  onEditSaved: () => void
   onDelete: () => void
 }
 
@@ -67,15 +69,23 @@ export function ItemDetail({
   item,
   onClose,
   onStatusChange,
+  onEditSaved,
   onDelete,
 }: ItemDetailProps) {
   const imageUrl = useObjectUrl(item.image)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [editing, setEditing] = useState(false)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
+      if (event.key !== 'Escape') return
+
+      if (editing) {
+        setEditing(false)
+      } else {
+        onClose()
+      }
     }
 
     const previousOverflow = document.body.style.overflow
@@ -87,7 +97,7 @@ export function ItemDetail({
       document.body.style.overflow = previousOverflow
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [onClose])
+  }, [editing, onClose])
 
   const selectedSeasons = SEASON_OPTIONS.filter((option) =>
     item.seasons.includes(option.value),
@@ -103,18 +113,54 @@ export function ItemDetail({
         aria-modal="true"
         aria-labelledby="item-dialog-title"
         onClick={(event) => event.stopPropagation()}
-        className="relative max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-t-3xl border border-line bg-card shadow-2xl sm:rounded-3xl animate-rise"
+        className={[
+          'relative max-h-[92vh] w-full overflow-y-auto rounded-t-3xl border border-line bg-card shadow-2xl sm:rounded-3xl animate-rise',
+          editing ? 'max-w-5xl' : 'max-w-4xl',
+        ].join(' ')}
       >
         <button
           ref={closeButtonRef}
           type="button"
-          onClick={onClose}
-          aria-label="Close item details"
+          onClick={() => {
+            if (editing) {
+              setEditing(false)
+            } else {
+              onClose()
+            }
+          }}
+          aria-label={editing ? 'Cancel editing' : 'Close item details'}
           className="absolute right-4 top-4 z-10 rounded-full bg-card/90 p-2 text-muted shadow-sm backdrop-blur transition hover:bg-card hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <X className="h-5 w-5" />
         </button>
 
+        {editing ? (
+          <div className="p-5 sm:p-8">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-accent">
+              Editing
+            </p>
+            <h2
+              id="item-dialog-title"
+              className="mt-2 font-display text-3xl leading-tight tracking-tight text-ink"
+            >
+              Edit this piece
+            </h2>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
+              Update any detail, or replace the photo. Nothing leaves this browser.
+            </p>
+
+            <div className="mt-7">
+              <ItemForm
+                item={item}
+                onSaved={() => {
+                  setEditing(false)
+                  onEditSaved()
+                }}
+                onCancel={() => setEditing(false)}
+              />
+            </div>
+          </div>
+        ) : (
         <div className="grid md:grid-cols-[1.05fr_0.95fr]">
           <div className="relative flex min-h-[300px] items-center justify-center bg-[radial-gradient(circle_at_50%_20%,#fffdf9,#e9e0d3)] p-6 md:min-h-[560px]">
             {imageUrl ? (
@@ -254,18 +300,29 @@ export function ItemDetail({
                   </button>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirmingDelete(true)}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-muted transition hover:text-red-700"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Remove from wardrobe
-                </button>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditing(true)}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2.5 text-xs font-medium text-paper transition hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Edit details
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingDelete(true)}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-muted transition hover:text-red-700"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Remove from wardrobe
+                  </button>
+                </div>
               )}
             </div>
           </div>
         </div>
+        )}
       </div>
     </div>
   )
