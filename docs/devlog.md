@@ -2,6 +2,12 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-17 — M1: retrying a failed cutout
+
+- `@imgly/background-removal` memoizes model loading by `JSON.stringify(config)`, so a load that failed stayed failed for the rest of the page session and the Retry button did nothing.
+- `cutoutConfig` now includes an attempt offset. A PNG ignores `quality`, so the offset only changes the memo key and never the output.
+- Verified in a browser: block the model CDN, watch the cutout fail, restore the network, press Retry, and the cutout completes.
+
 ## 2026-11-17 — M1: in-browser background removal
 
 - Added a "Remove background" action to the shared item form, below the photo card, with working, progress, and failed states.

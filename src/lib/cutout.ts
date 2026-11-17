@@ -1,3 +1,5 @@
+import type { Config } from '@imgly/background-removal'
+
 export interface CutoutProgress {
   stage: string
   percent: number
@@ -26,6 +28,27 @@ export function describeCutoutStage(key: string): string {
 }
 
 /**
+ * Configuration for the cutout model.
+ *
+ * `attempt` is bumped after a failure on purpose. The library memoizes model
+ * loading by `JSON.stringify(config)`, so a config that failed would stay
+ * failed for the rest of the page session. A PNG ignores `quality`, so nudging
+ * it only changes the memo key and never the output.
+ */
+export function cutoutConfig(attempt = 0): Config {
+  const offset = Number.isFinite(attempt)
+    ? Math.min(Math.max(Math.trunc(attempt), 0) * 0.001, 0.19)
+    : 0
+
+  return {
+    model: 'isnet_quint8',
+    output: { format: 'image/png', quality: 0.8 + offset },
+  }
+}
+
+let failedAttempts = 0
+
+/**
  * Remove the background from a photo entirely in the browser.
  *
  * The model is loaded on demand, so none of this reaches the main bundle until
@@ -38,15 +61,20 @@ export async function cutOutBackground(
 ): Promise<Blob> {
   const { removeBackground } = await import('@imgly/background-removal')
 
-  return removeBackground(image, {
-    // The smallest model keeps the first download near 40 MB instead of 80 MB.
-    model: 'isnet_quint8',
-    output: { format: 'image/png' },
-    progress: (key, current, total) => {
-      onProgress?.({
-        stage: describeCutoutStage(key),
-        percent: total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0,
-      })
-    },
-  })
+  try {
+    return await removeBackground(image, {
+      ...cutoutConfig(failedAttempts),
+      progress: (key, current, total) => {
+        onProgress?.({
+          stage: describeCutoutStage(key),
+          percent: total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0,
+        })
+      },
+    })
+  } catch (error) {
+    // Give the next try a fresh memo key so a transient network failure is not
+    // remembered for the rest of the page session.
+    failedAttempts += 1
+    throw error
+  }
 }

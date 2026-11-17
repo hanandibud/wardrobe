@@ -64,6 +64,8 @@ A modal that opens whenever a photo is chosen or the user presses Crop on an exi
 
 Wraps the in-browser cutout so the form never imports the model directly. `cutOutBackground` lazily imports `@imgly/background-removal`, runs the smallest model (`isnet_quint8`), and returns a PNG so transparency survives. The model and its WASM runtime are fetched on first use from the package's public CDN — never bundled into the app — which keeps the main chunk small and needs no key. Progress keys map through the pure `describeCutoutStage`, so the UI can show Downloading the model → Removing the background → Preparing the photo.
 
+The library memoizes model loading by `JSON.stringify(config)`, which means a failed load stays failed for the rest of the page session. `cutoutConfig` therefore carries a small attempt offset; since a PNG ignores `quality`, the offset changes only the memo key. That is what makes Retry work without a page reload.
+
 The cutout only replaces the working photo in the form. Saving is still deferred, so a bad cutout is discarded by leaving the form.
 
 ### `src/lib/backup.ts`
@@ -103,7 +105,7 @@ The canvas work is a thin wrapper: `paletteFromImage` takes a raw RGBA buffer an
 - `images.test.ts` — the accepted types and the 20 MB limit.
 - `backup.test.ts` — version checks, broken files, skipped items, and field filtering.
 - `storage.test.ts` — byte formatting and quota-error detection.
-- `cutout.test.ts` — progress-key wording for the cutout stages.
+- `cutout.test.ts` — progress-key wording and the retry memo key for the cutout config.
 
 The canvas, IndexedDB, and pointer-drag paths are verified in a browser instead; they are covered by the manual checks recorded in the devlog. CI runs the tests between typecheck and build.
 
