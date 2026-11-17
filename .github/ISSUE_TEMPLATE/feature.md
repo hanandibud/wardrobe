@@ -18,7 +18,7 @@ M1 / M2 / M3 / M4
 
 - [ ] ...
 - [ ] ...
-- [ ] `npm run lint`, `npm run typecheck`, and `npm run build` pass
+- [ ] `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` pass
 
 ## Notes
 

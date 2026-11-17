@@ -6,6 +6,7 @@
 
 - [ ] `npm run lint`
 - [ ] `npm run typecheck`
+- [ ] `npm test`
 - [ ] `npm run build`
 - [ ] Tested at 390 px mobile width
 

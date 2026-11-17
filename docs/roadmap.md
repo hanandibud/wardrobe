@@ -26,7 +26,7 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 - [x] Export wardrobe to a zip or JSON backup
 - [x] Import a backup
 - [x] Empty/loading/error states for storage quota
-- [ ] Unit tests for color extraction and image validation
+- [x] Unit tests for color extraction and image validation
 - [x] First GitHub Actions CI run
 
 **Acceptance:** add a piece, crop it, remove its background, edit its name, export the wardrobe, clear site data, import the backup, and everything returns.

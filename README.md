@@ -84,6 +84,7 @@ npm run dev        # local dev server
 npm run build      # typecheck + production build
 npm run typecheck  # TypeScript only
 npm run lint       # Oxlint
+npm test           # unit tests (Vitest)
 npm run preview    # preview the production build
 ```
 
@@ -113,6 +114,7 @@ src/
     crop.ts               crop geometry and canvas cropping
     images.ts             image validation and WebP compression
     storage.ts            storage estimate, persistence, quota detection
+    *.test.ts             Vitest unit tests for the pure logic
 docs/                     product, architecture, setup, roadmap, ADRs
 screenshots/              documentation screenshots
 ```

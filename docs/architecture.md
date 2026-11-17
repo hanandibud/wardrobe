@@ -86,6 +86,20 @@ Color extraction is deterministic and local:
 
 This is intentionally simpler than a trained fashion attribute model. It is fast, explainable, and good enough to seed the color field. The user can add or remove colors manually.
 
+The canvas work is a thin wrapper: `paletteFromImage` takes a raw RGBA buffer and does the sampling, clustering, and naming, which keeps the interesting part pure and testable. Only `extractPalette` touches `createImageBitmap` and `getImageData`.
+
+## Tests
+
+`npm test` runs Vitest over the pure logic. No browser or DOM is needed, because the parts worth testing were kept free of canvas and storage calls:
+
+- `colors.test.ts` — color naming, and palette extraction from a hand-built RGBA buffer.
+- `crop.test.ts` — fit, default frame, clamping, and corner resizing, including ratio and bounds.
+- `images.test.ts` — the accepted types and the 20 MB limit.
+- `backup.test.ts` — version checks, broken files, skipped items, and field filtering.
+- `storage.test.ts` — byte formatting and quota-error detection.
+
+The canvas, IndexedDB, and pointer-drag paths are verified in a browser instead; they are covered by the manual checks recorded in the devlog. CI runs the tests between typecheck and build.
+
 ### `src/hooks/useObjectUrl.ts`
 
 Creates an object URL for a Blob and revokes it on change/unmount. This avoids leaking memory when the wardrobe re-renders.

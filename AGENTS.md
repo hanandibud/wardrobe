@@ -24,10 +24,11 @@ npm run dev        # Vite dev server (LAN enabled)
 npm run build      # typecheck + production build
 npm run typecheck  # TypeScript only
 npm run lint       # Oxlint
+npm test           # unit tests (Vitest)
 npm run preview    # preview dist
 ```
 
-Run `npm run lint`, `npm run typecheck`, and `npm run build` before committing.
+Run `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` before committing.
 
 ## Free-only constraint
 

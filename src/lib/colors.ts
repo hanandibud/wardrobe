@@ -103,27 +103,18 @@ function clusterColors(points: LabPoint[], k: number): ColorCluster[] {
     .filter((cluster) => cluster.size > 0)
 }
 
-export async function extractPalette(file: Blob, maxColors = 4): Promise<string[]> {
-  const bitmap = await createImageBitmap(file)
-  const maxDimension = 160
-  const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height))
-  const width = Math.max(1, Math.round(bitmap.width * scale))
-  const height = Math.max(1, Math.round(bitmap.height * scale))
+export interface RgbaImage {
+  data: Uint8ClampedArray
+  width: number
+  height: number
+}
 
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
-
-  const context = canvas.getContext('2d', { willReadFrequently: true })
-  if (!context) {
-    bitmap.close()
-    return []
-  }
-
-  context.drawImage(bitmap, 0, 0, width, height)
-  bitmap.close()
-
-  const { data } = context.getImageData(0, 0, width, height)
+/**
+ * Sample pixels, cluster them in CIELAB space, and return up to `maxColors`
+ * hex strings. Pure, so the sampling and clustering can be tested directly.
+ */
+export function paletteFromImage(image: RgbaImage, maxColors = 4): string[] {
+  const { data, width, height } = image
   const pixelCount = width * height
   const step = Math.max(1, Math.floor(pixelCount / 6000))
   const points: LabPoint[] = []
@@ -160,6 +151,31 @@ export async function extractPalette(file: Blob, maxColors = 4): Promise<string[
   }
 
   return hexColors
+}
+
+export async function extractPalette(file: Blob, maxColors = 4): Promise<string[]> {
+  const bitmap = await createImageBitmap(file)
+  const maxDimension = 160
+  const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height))
+  const width = Math.max(1, Math.round(bitmap.width * scale))
+  const height = Math.max(1, Math.round(bitmap.height * scale))
+
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+
+  const context = canvas.getContext('2d', { willReadFrequently: true })
+  if (!context) {
+    bitmap.close()
+    return []
+  }
+
+  context.drawImage(bitmap, 0, 0, width, height)
+  bitmap.close()
+
+  const { data } = context.getImageData(0, 0, width, height)
+
+  return paletteFromImage({ data, width, height }, maxColors)
 }
 
 export function nameColor(hex: string): string {

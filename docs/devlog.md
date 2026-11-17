@@ -2,6 +2,15 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-17 — M1: unit tests
+
+- Added Vitest as a dev dependency and an `npm test` script; CI runs it between typecheck and build.
+- Split the pure part of color extraction into `paletteFromImage`, which takes a raw RGBA buffer, leaving only `extractPalette` to touch canvas APIs. That makes the sampling, clustering, and naming testable without a DOM.
+- Added 54 tests across `colors`, `crop`, `images`, `backup`, and `storage`: color naming, palette extraction, crop fit/clamp/resize with ratio and bounds, the 20 MB upload limit, backup version and field validation, byte formatting, and quota-error detection.
+- Kept the suites dependency-light: Vitest runs in the default Node environment because nothing under test needs a browser. Canvas, IndexedDB, and drag interactions stay covered by in-browser checks.
+
+**Next:** background removal, the last M1 item.
+
 ## 2026-11-17 — M1: crop before saving
 
 - Picking a photo now opens a crop step instead of committing the file straight away.
