@@ -1,6 +1,6 @@
 # Architecture
 
-## Current shape (M3 in progress)
+## Current shape (M3 complete)
 
 ```mermaid
 flowchart LR
@@ -165,6 +165,8 @@ The read view for a saved look: the name, when it was saved, the occasion, every
 
 The wear log, now the second section of the Today page. It reads `wearEvents` and `outfits` live, builds the joined history with `buildWearHistory`, and groups rows by day: the date label only appears on the first row of each day. Each row shows up to three piece thumbnails, the look’s current name, its occasion, and how many pieces remain. Empty states distinguish “save a look first” from “nothing worn yet” and link to the outfits tab.
 
+Each row also carries a heart toggle. It updates only that wear event’s `feedback` field — `loved`, or removed again — and disables the other hearts while the write is in flight. The live query then refreshes both the row and the suggestion panel, because `lovedItemIds` reads the same events. The label is icon-only on mobile and “Love” / “Loved” from `sm` up, with `aria-pressed` carrying the state for assistive tech. A failed write shows a short inline alert instead of pretending the tap worked.
+
 ### `src/components/ItemThumbnail.tsx`
 
 A shared decorative thumbnail for outfit collages and summary strips. It creates and revokes an object URL for the item Blob, marks the image `aria-hidden`, and relies on the name rendered beside it. Pieces without a photo fall back to a quiet "No photo" block.
@@ -289,7 +291,7 @@ scoring
 top 3 + explanation
 ```
 
-Shipped in `src/lib/recommend.ts` with the caps and ranges described above. The first version is rules-based: with one user and a small wardrobe, learned ranking has nothing to learn from. The remaining feedback work is the loved/skip wiring in the UI and the last M3 polish; weights stay hand-tuned.
+Shipped in `src/lib/recommend.ts` with the caps and ranges described above. The first version is rules-based: with one user and a small wardrobe, learned ranking has nothing to learn from. Loved looks are the one feedback signal that moves a score today; skips only hide a pick for the day, and the weights stay hand-tuned rather than fitted.
 
 ### Deployment
 

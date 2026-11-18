@@ -2,6 +2,18 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-18 — M3: love a look, and the picks remember
+
+- Added a heart toggle to every wear-log row. It flips `WearEvent.feedback` between `loved` and absent, one event at a time; the other hearts disable while the write is in flight so a fast double tap cannot race.
+- The toggle is icon-only on mobile and “Love” / “Loved” from `sm` up. `aria-pressed` plus a state-specific `aria-label` carry the meaning without relying on color. A failed write shows an inline alert.
+- This closes the feedback loop that was already in the engine: `lovedItemIds` reads the same events, so loving a wear immediately adds the “Includes a piece you loved” reason and a small item bonus to later picks. No new scoring code was needed.
+- Skips stay what they were: a per-day hide in `localStorage`, explicitly not training data.
+- No schema change. `feedback` was already in the `WearEvent` type and Dexie stores the whole object, so the first three milestones needed no migration.
+- Marked M3 complete in the roadmap and README, updated the architecture and data-model notes, and moved the footer to “Early build · M3 complete”.
+- Verified in a browser: love a row, reload, the state persists; unlove it, the field disappears and the picks lose the loved reason; at 390 px the hearts stay icon-only with no horizontal overflow.
+
+**Next:** M4 — installable PWA, then screenshots and a demo pass.
+
 ## 2026-11-18 — M3: three picks, and the reason why
 
 - Added `src/lib/recommend.ts` as the rules-based suggestion engine. It is pure apart from the per-day skip store, so every filter and score is testable.

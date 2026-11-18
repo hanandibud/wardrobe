@@ -47,7 +47,7 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 
 **Delivered (2026-11-18):** three reviewable slices — build and save with a list, then a detail with rename and delete, then wear logging and history.
 
-## M3 — Daily suggestion
+## M3 — Daily suggestion (done)
 
 - [x] Weather module (Open-Meteo, geolocation permission)
 - [x] Weather cache and manual location fallback
@@ -55,12 +55,14 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 - [x] Rule-based candidate generation
 - [x] Scoring: color harmony, formality, warmth, recency, availability
 - [x] Top 3 suggestions with a short “why”
-- [ ] Feedback: wore / skipped / loved
+- [x] Feedback: wore / skipped / loved
 - [x] Tests for scoring and hard filters
 
 **Acceptance:** on a rainy 12°C day, the app does not suggest sandals and a linen shirt; on a 30°C day, it does not suggest a heavy coat. Every suggestion only uses clean items.
 
 **Plan (2026-11-18):** three slices — weather and its cache, then the rules-based suggestion with an occasion picker, then feedback and polish. Slice one shipped the Today page, the weather card, and the location fallback. Slice two shipped the recommendation engine, the occasion picker, “Wear this”, and per-day skips.
+
+**Delivered (2026-11-18):** slice three added loved feedback to the wear log. Loving a logged wear marks its saved look, and pieces from a loved look get a small bonus in later picks with the reason “Includes a piece you loved”. Skips stay a per-day convenience and do not train the ranking.
 
 ## M4 — Personal and portable
 

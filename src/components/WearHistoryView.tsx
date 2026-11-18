@@ -1,10 +1,14 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowRight, Sun } from 'lucide-react'
+import { ArrowRight, Heart, Sun } from 'lucide-react'
 import { useState } from 'react'
 import { db } from '../db'
 import { pieceCountLabel } from '../lib/outfits'
 import { buildWearHistory, describeWornOn } from '../lib/wear'
-import { OCCASION_LABELS, type WardrobeItem } from '../types'
+import {
+  OCCASION_LABELS,
+  type WardrobeItem,
+  type WearEvent,
+} from '../types'
 import { ItemThumbnail } from './ItemThumbnail'
 
 interface WearHistoryViewProps {
@@ -14,6 +18,8 @@ interface WearHistoryViewProps {
 
 export function WearHistoryView({ items, onSeeOutfits }: WearHistoryViewProps) {
   const [today] = useState(() => new Date())
+  const [pendingId, setPendingId] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const outfits = useLiveQuery(() => db.outfits.toArray(), [])
   const events = useLiveQuery(
     () => db.wearEvents.orderBy('wornOn').reverse().toArray(),
@@ -22,6 +28,23 @@ export function WearHistoryView({ items, onSeeOutfits }: WearHistoryViewProps) {
 
   const entries =
     events && outfits ? buildWearHistory(events, outfits, items) : null
+
+  async function toggleLoved(event: WearEvent) {
+    if (event.id === undefined || pendingId !== null) return
+
+    setError(null)
+    setPendingId(event.id)
+
+    try {
+      await db.wearEvents.update(event.id, {
+        feedback: event.feedback === 'loved' ? undefined : 'loved',
+      })
+    } catch {
+      setError('Could not save that. Try again.')
+    } finally {
+      setPendingId(null)
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -40,6 +63,11 @@ export function WearHistoryView({ items, onSeeOutfits }: WearHistoryViewProps) {
                 : `${entries.length} ${entries.length === 1 ? 'wear' : 'wears'} logged · newest first`
               : 'Loading your wear log'}
           </p>
+          {entries && entries.length > 0 && (
+            <p className="mt-1.5 text-xs text-muted">
+              Love a wear to nudge tomorrow’s picks.
+            </p>
+          )}
         </div>
 
         {entries && entries.length > 0 && (
@@ -80,10 +108,21 @@ export function WearHistoryView({ items, onSeeOutfits }: WearHistoryViewProps) {
         </section>
       ) : (
         <section aria-label="Wear history" className="space-y-3">
+          {error && (
+            <p
+              role="alert"
+              className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs leading-5 text-red-800"
+            >
+              {error}
+            </p>
+          )}
+
           {entries.map((entry, index) => {
             const showDate =
               index === 0 ||
               entries[index - 1].event.wornOn !== entry.event.wornOn
+            const loved = entry.event.feedback === 'loved'
+            const pending = pendingId === entry.event.id
 
             return (
               <div
@@ -125,6 +164,40 @@ export function WearHistoryView({ items, onSeeOutfits }: WearHistoryViewProps) {
                         : 'This look is no longer saved'}
                     </p>
                   </div>
+
+                  {entry.event.id !== undefined && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void toggleLoved(entry.event)
+                      }}
+                      disabled={pendingId !== null}
+                      aria-pressed={loved}
+                      aria-label={
+                        loved
+                          ? 'Remove love from this wear'
+                          : 'Love this wear'
+                      }
+                      className={[
+                        'inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-2 text-[11px] font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60',
+                        loved
+                          ? 'border-accent/40 bg-accent-soft text-accent'
+                          : 'border-line bg-card text-muted hover:border-ink/30 hover:text-ink',
+                      ].join(' ')}
+                    >
+                      <Heart
+                        className={[
+                          'h-3.5 w-3.5',
+                          loved ? 'fill-current' : '',
+                          pending ? 'animate-pulse' : '',
+                        ].join(' ')}
+                        strokeWidth={1.8}
+                      />
+                      <span className="hidden sm:inline">
+                        {loved ? 'Loved' : 'Love'}
+                      </span>
+                    </button>
+                  )}
                 </div>
               </div>
             )

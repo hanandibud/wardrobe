@@ -79,7 +79,7 @@ Indexes are chosen for the planned queries:
 - `WearEvent.wornOn` is a local calendar date (`YYYY-MM-DD`), not a UTC timestamp, so an evening wear stays on the day it happened.
 - One wear per look per day is a UI rule. The table has no unique index; `OutfitDetail` checks for an existing row before writing and again inside the click handler.
 - Deleting a look deletes its wear events in the same transaction, so the log never points at a missing outfit.
-- `WearEvent.feedback` is unused until M3, and `WardrobeItem.lastWornAt` is still unused; recency scoring arrives with the daily suggestion.
+- `WearEvent.feedback` is used from M3 slice 3: the wear log toggles it between `loved` and absent. Only `loved` changes a suggestion score; the other values exist in the union but are never written. `WardrobeItem.lastWornAt` is still unused — recency is derived from the wear events instead of stored on the item.
 
 ## Weather cache (localStorage)
 

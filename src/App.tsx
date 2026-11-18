@@ -118,7 +118,7 @@ function App() {
             <Lock className="h-3.5 w-3.5" />
             Local-first. Your photos never leave this browser.
           </p>
-          <p>Early build · M3 in progress</p>
+          <p>Early build · M3 complete</p>
         </div>
       </footer>
 

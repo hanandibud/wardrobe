@@ -2,7 +2,7 @@
 
 A local-first virtual wardrobe. Add a garment with one photo, let the app pull its main colors, and build a closet you can actually use. The long-term goal is a daily outfit suggestion based on the weather, the occasion, and what is clean.
 
-> **Status: M3 in progress.** Add, edit, crop, cut out, and back up a local wardrobe, build and save looks from it, keep a wear log, check today’s weather, and get up to three outfit suggestions with a reason. Everything personal stays in your browser — no account, no backend, no paid API.
+> **Status: M3 complete.** Add, edit, crop, cut out, and back up a local wardrobe, build and save looks from it, keep a wear log, check today’s weather, and get up to three outfit suggestions that learn a little from the looks you love. Everything personal stays in your browser — no account, no backend, no paid API.
 
 **Live:** https://hanandibud.github.io/wardrobe/
 
@@ -30,6 +30,7 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 - Choose casual, work, smart, or formal before picking
 - Press “Wear this” to save the look and log the wear in one step
 - Skip a pick for the rest of the day
+- Love a wear in the log so pieces from that look rise in later picks
 - Open a piece to see its details
 - Mark a piece clean, needs wash, or in laundry
 - Remove a piece
@@ -60,7 +61,6 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 
 ## Planned
 
-- Wear feedback (loved, liked, skipped) on the log
 - Installable PWA
 - Skin-tone and color-preference tuning (as a preference, not a scientific claim)
 
@@ -89,7 +89,7 @@ No Vercel, Supabase, or paid AI API is required. If the app later needs multi-de
 - `culori` for color conversion and Delta E
 - `@imgly/background-removal` on `onnxruntime-web` for the in-browser cutout
 - Lucide icons
-- Open-Meteo (planned)
+- Open-Meteo for weather (keyless)
 - GitHub Pages (live)
 
 ## Run it
