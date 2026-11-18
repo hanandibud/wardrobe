@@ -79,9 +79,8 @@ export function SuggestionsPanel({
         lastWornByItem: lastWorn,
         lovedItemIds: loved,
         skippedKeys: skipped,
-        preferences,
       }),
-    [items, occasion, band, wet, today, lastWorn, loved, skipped, preferences],
+    [items, occasion, band, wet, today, lastWorn, loved, skipped],
   )
 
   function matchingOutfit(suggestion: Suggestion) {
