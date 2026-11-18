@@ -104,6 +104,8 @@ function App() {
             <TodayView
               items={items}
               onSeeOutfits={() => setTab('outfits')}
+              onAddItems={() => setTab('add')}
+              onSaved={setToast}
             />
           ) : (
             <LoadingView />

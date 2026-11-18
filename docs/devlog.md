@@ -2,6 +2,22 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-18 — M3: three picks, and the reason why
+
+- Added `src/lib/recommend.ts` as the rules-based suggestion engine. It is pure apart from the per-day skip store, so every filter and score is testable.
+- Hard filters are clean status, season, occasion formality, and weather warmth. The warmth ranges are strict on purpose: cool is 3–4, so a 12°C rainy day rejects linen, sandals, and thin sneakers.
+- Combinations are a dress, or a top plus a bottom, with optional shoes, outerwear (cold/cool only), and one accessory. Each category is ranked and capped before combos are formed, keeping the search in the hundreds rather than thousands.
+- Scoring blends formality distance, warmth distance, recency (a penalty, not a hard filter), loved pieces, colour harmony, and small bonuses for outerwear in the cold and covered shoes in the wet.
+- Colour harmony uses the first stored colour per piece: neutral anchors plus one or two hue families score well, four separate hues are penalised. It is transparent, not scientific; a busy photo background can blur the signal.
+- “Wear this” runs one Dexie transaction: reuse a look with the same piece set or create one, then add today’s wear only if it is missing. The card switches to “In today’s log” through the live query.
+- Skips persist per local day in `localStorage` (`wardrobe.skips.v1`), so hiding a pick survives a reload and resets overnight. A “Show skipped picks” control brings them back.
+- Added an occasion picker (casual, work, smart, formal) and an honest set of empty states: empty wardrobe, all laundry, nothing fits the filters, or every pick skipped.
+- The Today page now holds the weather snapshot so the suggestion panel can react to feels-like and rain without a second request.
+- Added `recommend.test.ts` (34 tests): season mapping, neutral detection, every hard filter, the rainy-12°C and hot-30°C acceptance cases, dress bases, formality, the three-pick cap, determinism, recency, loved pieces, skips, and the wear/loved joins. Suite is now 144.
+- Verified in a browser at 1440 px and 390 px with a seeded 13-piece test wardrobe: three cards with reasons, “Wear this” creating one look and one wear, occasion switching, three skips surviving a reload, and resetting them. No horizontal overflow.
+
+**Next:** M3 slice 3 — loved feedback in the wear log, then milestone docs and polish.
+
 ## 2026-11-18 — M3: today’s weather, cached
 
 - Added `src/lib/weather.ts`: WMO code mapping, a feels-like clothing band, cache freshness, relative update labels, payload and place parsing, and the two keyless Open-Meteo calls.

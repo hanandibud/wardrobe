@@ -102,7 +102,11 @@ function samePlace(a: Place, b: PlaceResult): boolean {
   )
 }
 
-export function WeatherPanel() {
+interface WeatherPanelProps {
+  onSnapshotChange?: (snapshot: WeatherSnapshot | null) => void
+}
+
+export function WeatherPanel({ onSnapshotChange }: WeatherPanelProps) {
   const [place, setPlace] = useState<Place | null>(() => readSavedPlace())
   const [snapshot, setSnapshot] = useState<WeatherSnapshot | null>(() => {
     const saved = readSavedPlace()
@@ -123,46 +127,53 @@ export function WeatherPanel() {
   const [searchError, setSearchError] = useState<string | null>(null)
   const requestId = useRef(0)
 
-  const loadWeather = useCallback(async (target: Place, force: boolean) => {
-    const currentRequest = ++requestId.current
-    const cached = readCachedWeather(target)
+  const loadWeather = useCallback(
+    async (target: Place, force: boolean) => {
+      const currentRequest = ++requestId.current
+      const cached = readCachedWeather(target)
 
-    if (!force && cached && isCacheFresh(cached.fetchedAt, Date.now())) {
-      setSnapshot(cached)
-      setNow(Date.now())
-      setError(null)
-      setLoading(false)
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-
-    try {
-      const fresh = await fetchWeather(target)
-      if (requestId.current !== currentRequest) return
-
-      writeCachedWeather(target, fresh)
-      setSnapshot(fresh)
-      setNow(Date.now())
-    } catch {
-      if (requestId.current !== currentRequest) return
-
-      if (cached) {
+      if (!force && cached && isCacheFresh(cached.fetchedAt, Date.now())) {
         setSnapshot(cached)
         setNow(Date.now())
-        setError(
-          'Showing the last reading — the weather service could not be reached.',
-        )
-      } else {
-        setError(
-          'Could not reach the weather service. Check your connection and try again.',
-        )
+        setError(null)
+        setLoading(false)
+        onSnapshotChange?.(cached)
+        return
       }
-    } finally {
-      if (requestId.current === currentRequest) setLoading(false)
-    }
-  }, [])
+
+      setLoading(true)
+      setError(null)
+
+      try {
+        const fresh = await fetchWeather(target)
+        if (requestId.current !== currentRequest) return
+
+        writeCachedWeather(target, fresh)
+        setSnapshot(fresh)
+        setNow(Date.now())
+        onSnapshotChange?.(fresh)
+      } catch {
+        if (requestId.current !== currentRequest) return
+
+        if (cached) {
+          setSnapshot(cached)
+          setNow(Date.now())
+          onSnapshotChange?.(cached)
+          setError(
+            'Showing the last reading — the weather service could not be reached.',
+          )
+        } else {
+          onSnapshotChange?.(null)
+          setError(
+            'Could not reach the weather service. Check your connection and try again.',
+          )
+        }
+      } finally {
+        if (requestId.current === currentRequest) setLoading(false)
+      }
+    },
+    [onSnapshotChange],
+  )
 
   useEffect(() => {
     if (!place) return
@@ -177,13 +188,15 @@ export function WeatherPanel() {
   }, [])
 
   function choosePlace(next: Place) {
+    const cached = readCachedWeather(next)
     savePlace(next)
-    setSnapshot(readCachedWeather(next))
+    setSnapshot(cached)
     setPlace(next)
     setSearchOpen(false)
     setQuery('')
     setResults([])
     setSearchError(null)
+    onSnapshotChange?.(cached)
   }
 
   function useMyLocation() {

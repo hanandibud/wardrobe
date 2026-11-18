@@ -2,7 +2,7 @@
 
 A local-first virtual wardrobe. Add a garment with one photo, let the app pull its main colors, and build a closet you can actually use. The long-term goal is a daily outfit suggestion based on the weather, the occasion, and what is clean.
 
-> **Status: M3 in progress.** Add, edit, crop, cut out, and back up a local wardrobe, build and save looks from it, keep a wear log, and check the weather for today. Everything personal stays in your browser — no account, no backend, no paid API.
+> **Status: M3 in progress.** Add, edit, crop, cut out, and back up a local wardrobe, build and save looks from it, keep a wear log, check today’s weather, and get up to three outfit suggestions with a reason. Everything personal stays in your browser — no account, no backend, no paid API.
 
 **Live:** https://hanandibud.github.io/wardrobe/
 
@@ -26,6 +26,10 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 - See the wear log newest first, grouped by day
 - See today’s weather from Open-Meteo using your location or a city search
 - Cache the weather for half an hour and refresh it on demand
+- Get up to three outfit picks built from clean pieces, with a reason for each
+- Choose casual, work, smart, or formal before picking
+- Press “Wear this” to save the look and log the wear in one step
+- Skip a pick for the rest of the day
 - Open a piece to see its details
 - Mark a piece clean, needs wash, or in laundry
 - Remove a piece
@@ -48,14 +52,15 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 
 ![Outfit detail](screenshots/outfit-detail.png)
 
-![Today: weather and wear log](screenshots/weather.png)
+![Today’s weather card](screenshots/weather.png)
+
+![Outfit suggestions](screenshots/suggestions.png)
 
 ![Wear log](screenshots/wear-log.png)
 
 ## Planned
 
-- Occasion-first daily suggestions with a short reason
-- Wear feedback (loved, liked, skipped)
+- Wear feedback (loved, liked, skipped) on the log
 - Installable PWA
 - Skin-tone and color-preference tuning (as a preference, not a scientific claim)
 
@@ -124,8 +129,9 @@ src/
     OutfitsView.tsx       saved looks grid, empty states, builder switch
     OutfitBuilder.tsx     name, occasion, seasons, piece picker
     OutfitDetail.tsx      outfit dialog with rename, wear, and delete
-    TodayView.tsx         today page shell: heading, weather, wear log
+    TodayView.tsx         today page shell: heading, weather, suggestions, log
     WeatherPanel.tsx      location search, cache, and current conditions
+    SuggestionsPanel.tsx  occasion picker, cards, wear this, skip
     WearHistoryView.tsx   wear log grouped by day
     CropDialog.tsx        crop frame with drag and resize handles
     BackupPanel.tsx       export/import controls and status
@@ -140,6 +146,7 @@ src/
     cutout.ts             in-browser background removal wrapper
     images.ts             image validation and WebP compression
     outfits.ts            selection toggling, category groups, item resolution
+    recommend.ts          hard filters, combos, scoring, reasons, skips
     storage.ts            storage estimate, persistence, quota detection
     wear.ts               local dates, wear labels, history join
     weather.ts            Open-Meteo fetch, WMO mapping, bands, cache
@@ -153,6 +160,7 @@ screenshots/              documentation screenshots
 - Photos and wardrobe data are stored in IndexedDB in your browser.
 - Photos are never uploaded. Background removal runs locally; only the model file is downloaded.
 - The weather request sends only rounded coordinates to Open-Meteo, a keyless free service. The chosen place and last reading stay in `localStorage`.
+- Skipped picks for the current day are kept in `localStorage` too; they never leave the browser.
 - IndexedDB is per browser and per device. Clearing site data deletes the wardrobe unless you keep a backup. Export/import is built in.
 - Backup files contain your photos. Treat them like personal documents and do not commit or share them.
 

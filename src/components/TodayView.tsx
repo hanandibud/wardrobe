@@ -1,15 +1,28 @@
 import { useState } from 'react'
+import { readCachedWeather, readSavedPlace, type WeatherSnapshot } from '../lib/weather'
 import type { WardrobeItem } from '../types'
+import { SuggestionsPanel } from './SuggestionsPanel'
 import { WearHistoryView } from './WearHistoryView'
 import { WeatherPanel } from './WeatherPanel'
 
 interface TodayViewProps {
   items: WardrobeItem[]
   onSeeOutfits: () => void
+  onAddItems: () => void
+  onSaved: (message: string) => void
 }
 
-export function TodayView({ items, onSeeOutfits }: TodayViewProps) {
+export function TodayView({
+  items,
+  onSeeOutfits,
+  onAddItems,
+  onSaved,
+}: TodayViewProps) {
   const [today] = useState(() => new Date())
+  const [weather, setWeather] = useState<WeatherSnapshot | null>(() => {
+    const place = readSavedPlace()
+    return place ? readCachedWeather(place) : null
+  })
   const dateLabel = new Intl.DateTimeFormat(undefined, {
     weekday: 'long',
     month: 'long',
@@ -31,7 +44,14 @@ export function TodayView({ items, onSeeOutfits }: TodayViewProps) {
         </p>
       </header>
 
-      <WeatherPanel />
+      <WeatherPanel onSnapshotChange={setWeather} />
+
+      <SuggestionsPanel
+        items={items}
+        weather={weather}
+        onAddItems={onAddItems}
+        onSaved={onSaved}
+      />
 
       <WearHistoryView items={items} onSeeOutfits={onSeeOutfits} />
     </div>

@@ -107,7 +107,45 @@ Location can come from the browser geolocation permission or from a city search.
 
 ### `src/components/TodayView.tsx`
 
-The Today page shell: a local-date eyebrow, the `Today` heading, the weather card, and the wear log. Splitting it out keeps `App` to tab routing and gives the M3 suggestion cards a natural home between the weather and the log.
+The Today page shell: a local-date eyebrow, the `Today` heading, the weather card, the suggestion cards, and the wear log. It holds the current weather snapshot so the suggestions can react to it, and seeds that snapshot from the cache before the panel fetches. Splitting it out keeps `App` to tab routing.
+
+### `src/lib/recommend.ts`
+
+The rules-based brain behind the daily picks. All of it is pure except the small skip store, so the rules are tested without a browser.
+
+Hard filters (`isEligible`):
+
+- `status === 'clean'` — a look never asks for laundry.
+- current season from `seasonForMonth`, where an empty season list means all-season.
+- occasion formality range: casual 1–3, work 2–4, smart 3–4, formal 4–5.
+- weather band warmth range: cold 4–5, cool 3–4, mild 2–4, warm 1–3, hot 1–2. Feels-like drives this, and the edges are strict on purpose: a 12°C day should not surface linen.
+- wet days add a shoe rule (warmth ≥ 3 when cold or cool). There is no material field yet, so shoe warmth is the stand-in for “closed enough for rain”.
+
+Candidate generation:
+
+- a dress, or a top plus a bottom, is the base;
+- shoes, outerwear (cold or cool only), and one accessory are optional;
+- each category is ranked and capped (six tops, six bottoms, four dresses, four shoes, three outerwear, two accessories) before combos are formed, which keeps the search small.
+
+Scoring:
+
+- item base: distance from the occasion’s ideal formality and the band’s ideal warmth, a recency penalty for pieces worn in the last three days, a small bonus for never worn, and a bonus for pieces from a “loved” look;
+- combo: colour harmony, a formality-consistency bonus, extra weight for outerwear on a cold day and for covered shoes on a wet one;
+- `colorHarmony` prefers neutrals plus one or two hue families and penalises four or more separate hues. It reads the first stored colour per piece, so a busy photo background can blur the signal — a known limitation.
+- recency is a penalty, not a hard filter, so a small wardrobe still produces picks.
+
+The top three deterministic combos win, each with up to three reasons. `lastWornByItem` joins wear events through saved looks, `lovedItemIds` collects pieces from looks marked loved, `findMatchingOutfit` compares item sets order-independently so “Wear this” reuses an existing look instead of duplicating it, and `suggestionName` anchors the saved name on the main piece.
+
+Skips are a per-day convenience: `readSkippedKeys` / `writeSkippedKeys` keep `{ date, keys }` in `localStorage` under `wardrobe.skips.v1` and ignore a record from another day. Skipping is not training data; loved looks are the only feedback that changes a score so far.
+
+### `src/components/SuggestionsPanel.tsx`
+
+Owns the occasion picker and the three cards. It reads outfits and wear events live, derives recency and loved pieces, and recomputes suggestions with `useMemo`. Each card shows its pieces as thumbnails, the reasons with check marks, and two actions:
+
+- **Wear this** opens one Dexie transaction: reuse a matching look or add a new one, then add today’s wear event only if it is not already there. Even a fast double press cannot duplicate the day.
+- **Skip** hides that combination for the rest of the day; a “Show skipped” control brings the picks back.
+
+Empty states distinguish an empty wardrobe, everything in the wash, nothing clean that fits the occasion/weather, and every pick skipped.
 
 ### `src/components/OutfitsView.tsx`
 
@@ -172,6 +210,7 @@ The canvas work is a thin wrapper: `paletteFromImage` takes a raw RGBA buffer an
 - `outfits.test.ts` — toggling without duplicates, category grouping, resolving deleted items, and the piece count copy.
 - `wear.test.ts` — local date keys, Today/Yesterday labels, history ordering, and removed looks.
 - `weather.test.ts` — band boundaries, WMO code mapping, wet conditions, cache freshness (including future timestamps), update labels, payload/place parsing, and the localStorage round trip.
+- `recommend.test.ts` — season mapping, neutrals and hue harmony, every hard filter, rain and heat exclusions, dress vs. top/bottom bases, formality, the three-pick cap, determinism, recency, loved pieces, skips, and the wear/loved joins.
 
 The canvas, IndexedDB, and pointer-drag paths are verified in a browser instead; they are covered by the manual checks recorded in the devlog. CI runs the tests between typecheck and build.
 
@@ -226,14 +265,14 @@ Only coordinates are sent, rounded to three decimals. The reading is cached for 
 
 Limits to remember: the API has no key but also no uptime promise; the card can show a stale reading with a warning. Location is whatever the browser reports, so a VPN or desktop without GPS may resolve to a nearby city.
 
-### Recommendation pipeline (M3 slice 2, next)
+### Recommendation pipeline (M3 slice 2, shipped)
 
 ```text
 hard filters
   occasion + formality range
   season + weather band
   status = clean
-  not worn in the last N days
+  wet-day shoe rule
         ↓
 candidate generation
   top + bottom, or dress
@@ -242,16 +281,15 @@ candidate generation
   optional accessory
         ↓
 scoring
-  color harmony (Delta E + neutral anchors)
+  color harmony (neutral anchors + hue families)
   formality consistency
   warmth vs feels-like
-  user preference weights
-  novelty / recency
+  recency and loved pieces
         ↓
 top 3 + explanation
 ```
 
-The first version is rules-based. With one user and a small wardrobe, learned ranking has nothing to learn from. Log feedback (`wore`, `skipped`, `loved`) and only consider weights later once there is enough history.
+Shipped in `src/lib/recommend.ts` with the caps and ranges described above. The first version is rules-based: with one user and a small wardrobe, learned ranking has nothing to learn from. The remaining feedback work is the loved/skip wiring in the UI and the last M3 polish; weights stay hand-tuned.
 
 ### Deployment
 

@@ -90,6 +90,8 @@ Weather is intentionally outside Dexie, so the feature needed no schema migratio
 - A cached reading is reused only when its coordinates match the current place, and only for 30 minutes (`WEATHER_CACHE_TTL_MS`).
 - These keys are device-local preferences, not wardrobe data. They are not part of backups and can be cleared without losing pieces. Storage failures are swallowed so a blocked profile still works.
 
+`wardrobe.skips.v1` stores the current day’s skipped suggestion keys as `{ date, keys }`. A record from another day is ignored, so skips reset naturally at midnight. Like the weather cache, it is not wardrobe data and is not exported.
+
 ## Backup format (M1)
 
 `src/lib/backup.ts` exports one versioned JSON file:
