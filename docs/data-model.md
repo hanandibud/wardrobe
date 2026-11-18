@@ -81,6 +81,15 @@ Indexes are chosen for the planned queries:
 - Deleting a look deletes its wear events in the same transaction, so the log never points at a missing outfit.
 - `WearEvent.feedback` is unused until M3, and `WardrobeItem.lastWornAt` is still unused; recency scoring arrives with the daily suggestion.
 
+## Weather cache (localStorage)
+
+Weather is intentionally outside Dexie, so the feature needed no schema migration:
+
+- `wardrobe.place.v1` holds `{ latitude, longitude, label }`. Coordinates are rounded to three decimals before saving.
+- `wardrobe.weather.v1` holds `{ place, snapshot }`. The snapshot contains temperature, feels-like, precipitation, wind speed, the WMO code, the derived condition and label, the day/night flag, `fetchedAt`, and the place label.
+- A cached reading is reused only when its coordinates match the current place, and only for 30 minutes (`WEATHER_CACHE_TTL_MS`).
+- These keys are device-local preferences, not wardrobe data. They are not part of backups and can be cleared without losing pieces. Storage failures are swallowed so a blocked profile still works.
+
 ## Backup format (M1)
 
 `src/lib/backup.ts` exports one versioned JSON file:

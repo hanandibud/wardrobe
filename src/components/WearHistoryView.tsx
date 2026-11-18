@@ -30,9 +30,9 @@ export function WearHistoryView({ items, onSeeOutfits }: WearHistoryViewProps) {
           <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-accent">
             The record
           </p>
-          <h1 className="mt-2 font-display text-4xl leading-none tracking-tight text-ink sm:text-5xl">
+          <h2 className="mt-2 font-display text-3xl leading-none tracking-tight text-ink sm:text-4xl">
             Wear log
-          </h1>
+          </h2>
           <p className="mt-3 text-sm text-muted">
             {entries
               ? entries.length === 0
@@ -61,9 +61,9 @@ export function WearHistoryView({ items, onSeeOutfits }: WearHistoryViewProps) {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent-soft text-accent">
             <Sun className="h-7 w-7" strokeWidth={1.6} />
           </div>
-          <h2 className="mt-6 font-display text-3xl tracking-tight text-ink sm:text-4xl">
+          <h3 className="mt-6 font-display text-3xl tracking-tight text-ink sm:text-4xl">
             {outfits?.length ? 'Nothing worn yet.' : 'Save a look first.'}
-          </h2>
+          </h3>
           <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted">
             {outfits?.length
               ? 'Open a saved look and press Wore this today. Every wear lands here, so you can remember what worked.'

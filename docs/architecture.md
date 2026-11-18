@@ -1,6 +1,6 @@
 # Architecture
 
-## Current shape (M2 complete)
+## Current shape (M3 in progress)
 
 ```mermaid
 flowchart LR
@@ -10,9 +10,12 @@ flowchart LR
   IMG --> DB
   UI --> COLOR[Lab k-means color extraction]
   COLOR --> UI
+  UI --> WX[Open-Meteo weather]
+  WX --> UI
+  UI --> LS[(localStorage: place + reading)]
 ```
 
-There is no backend, no account, and no network request in the current app. The browser is the product.
+There is no backend and no account. Photos stay in IndexedDB. The only network requests are keyless: Open-Meteo weather and geocoding, plus the cutout model fetched from a public CDN on first use.
 
 ## Why local-first
 
@@ -81,6 +84,31 @@ Pure helpers behind the outfit UI, kept out of the components so they are testab
 
 The wear log stays honest about time zones. `localIsoDate` builds `YYYY-MM-DD` from local parts, so a wear logged at 23:45 stays on that day rather than moving to tomorrow in UTC. `describeWornOn` returns Today, Yesterday, or a readable date for older entries. `buildWearHistory` joins events to their look and remaining pieces, sorts by date and then insertion time, and keeps an event whose look is gone so the view can call it a removed look instead of failing.
 
+### `src/lib/weather.ts`
+
+The weather boundary. Pure, network-free helpers sit next to the two fetch calls so the API shape can be tested without a browser:
+
+- `describeWeatherCode` maps the WMO code from Open-Meteo to a condition (`clear`, `cloudy`, `fog`, `drizzle`, `rain`, `snow`, `storm`) and a readable label.
+- `isWetCondition` marks anything that warrants rain-ready clothing.
+- `weatherBand` turns the feels-like temperature into `cold` (<5°C), `cool` (<14), `mild` (<22), `warm` (<28), or `hot`. The thresholds are a deliberate starting heuristic, easy to tune.
+- `isCacheFresh` accepts a reading younger than 30 minutes and rejects future timestamps, so a clock change cannot keep stale data alive.
+- `formatUpdatedAt` produces “just now”, “5 min ago”, or “2 hours ago” for the card.
+- `parseWeatherPayload` and `parsePlaceResults` validate the JSON from Open-Meteo and skip malformed rows instead of failing a whole list.
+- `fetchWeather` requests only `current` fields: temperature, apparent temperature, precipitation, weather code, wind, and day/night.
+- `searchPlaces` calls the keyless geocoding endpoint and keeps six candidates.
+
+Location and the last reading live in `localStorage`, not Dexie, so the feature needed no schema migration: `wardrobe.place.v1` stores the chosen coordinates and label, `wardrobe.weather.v1` stores the matching snapshot. A cached reading is reused only for the same coordinates; reading or writing storage is wrapped so a blocked or full store never breaks the page.
+
+### `src/components/WeatherPanel.tsx`
+
+The weather card on the Today page. It starts from the saved place and a cached reading, then fetches only when the cache is stale. Refresh forces a request. If a request fails but an older reading exists, the card shows that reading with an explicit “last reading” warning rather than an empty state.
+
+Location can come from the browser geolocation permission or from a city search. A denied or unavailable permission leaves the current place untouched and points at search. Coordinates are rounded to three decimals before storing, and nothing is sent anywhere except Open-Meteo. The updated time is relative and refreshable; a one-minute interval keeps the label honest while the tab stays open.
+
+### `src/components/TodayView.tsx`
+
+The Today page shell: a local-date eyebrow, the `Today` heading, the weather card, and the wear log. Splitting it out keeps `App` to tab routing and gives the M3 suggestion cards a natural home between the weather and the log.
+
 ### `src/components/OutfitsView.tsx`
 
 Owns the outfits tab. A `useLiveQuery` reads `outfits` newest first. The page has three states: wardrobe empty (send the user to Add), no saved looks, and the card grid. Each card shows up to four pieces in a fixed collage, the occasion, the name, the piece count, and the seasons. The collage sits in an absolutely positioned grid inside an `aspect-square` frame so a tall photo cannot stretch the card. Cards are buttons that open the detail dialog; switching to the builder is local state, and saving returns to the list with a toast.
@@ -97,7 +125,7 @@ The read view for a saved look: the name, when it was saved, the occasion, every
 
 ### `src/components/WearHistoryView.tsx`
 
-The Today tab’s first real content. It reads `wearEvents` and `outfits` live, builds the joined history with `buildWearHistory`, and groups rows by day: the date label only appears on the first row of each day. Each row shows up to three piece thumbnails, the look’s current name, its occasion, and how many pieces remain. Empty states distinguish “save a look first” from “nothing worn yet” and link to the outfits tab.
+The wear log, now the second section of the Today page. It reads `wearEvents` and `outfits` live, builds the joined history with `buildWearHistory`, and groups rows by day: the date label only appears on the first row of each day. Each row shows up to three piece thumbnails, the look’s current name, its occasion, and how many pieces remain. Empty states distinguish “save a look first” from “nothing worn yet” and link to the outfits tab.
 
 ### `src/components/ItemThumbnail.tsx`
 
@@ -143,6 +171,7 @@ The canvas work is a thin wrapper: `paletteFromImage` takes a raw RGBA buffer an
 - `cutout.test.ts` — progress-key wording and the retry memo key for the cutout config.
 - `outfits.test.ts` — toggling without duplicates, category grouping, resolving deleted items, and the piece count copy.
 - `wear.test.ts` — local date keys, Today/Yesterday labels, history ordering, and removed looks.
+- `weather.test.ts` — band boundaries, WMO code mapping, wet conditions, cache freshness (including future timestamps), update labels, payload/place parsing, and the localStorage round trip.
 
 The canvas, IndexedDB, and pointer-drag paths are verified in a browser instead; they are covered by the manual checks recorded in the devlog. CI runs the tests between typecheck and build.
 
@@ -171,9 +200,9 @@ sequenceDiagram
   F-->>U: Back to wardrobe + toast
 ```
 
-## Planned pieces
+## Feature notes
 
-## Background removal
+### Background removal (M1, shipped)
 
 Shipped in M1 as an in-browser cutout:
 
@@ -184,18 +213,20 @@ Shipped in M1 as an in-browser cutout:
 
 Limits to remember: inference is CPU-bound and takes a few seconds, the first run is download-bound, and a blurry or busy background still yields a rough mask. The user can always skip the cutout.
 
-### Weather
+### Weather (M3 slice 1, shipped)
 
 Open-Meteo, fetched directly from the browser:
 
-- `current` / `hourly` feels-like temperature
-- precipitation probability
+- `current` temperature and apparent temperature (feels-like drives the clothing band)
+- precipitation and weather code
 - wind speed
-- UV index (optional)
+- day/night flag
 
-Only coordinates are sent. Cache the response for 30–60 minutes. The module boundary should make it possible to swap providers without touching the recommendation logic.
+Only coordinates are sent, rounded to three decimals. The reading is cached for 30 minutes in `localStorage` and reused across reloads without a request. The module boundary keeps the provider swappable without touching the recommendation logic. The UI falls back to a manual city search when geolocation is denied.
 
-### Recommendation pipeline (M3)
+Limits to remember: the API has no key but also no uptime promise; the card can show a stale reading with a warning. Location is whatever the browser reports, so a VPN or desktop without GPS may resolve to a nearby city.
+
+### Recommendation pipeline (M3 slice 2, next)
 
 ```text
 hard filters
@@ -230,7 +261,7 @@ The Vite build is static. `base: './'` makes it portable to a GitHub Pages proje
 
 - No secrets or API keys exist in the client.
 - No user photos are uploaded.
-- Weather coordinates are the only planned network payload.
+- Weather coordinates are the only network payload besides the cutout model download.
 - Export files will contain personal wardrobe data; warn the user before sharing.
 - If sync is added, authentication and row-level authorization become mandatory before the first sync.
 

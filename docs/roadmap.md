@@ -49,8 +49,8 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 
 ## M3 — Daily suggestion
 
-- [ ] Weather module (Open-Meteo, geolocation permission)
-- [ ] Weather cache and manual location fallback
+- [x] Weather module (Open-Meteo, geolocation permission)
+- [x] Weather cache and manual location fallback
 - [ ] Occasion picker
 - [ ] Rule-based candidate generation
 - [ ] Scoring: color harmony, formality, warmth, recency, availability
@@ -59,6 +59,8 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 - [ ] Tests for scoring and hard filters
 
 **Acceptance:** on a rainy 12°C day, the app does not suggest sandals and a linen shirt; on a 30°C day, it does not suggest a heavy coat. Every suggestion only uses clean items.
+
+**Plan (2026-11-18):** three slices — weather and its cache, then the rules-based suggestion with an occasion picker, then feedback and polish. Slice one shipped the Today page, the weather card, and the location fallback.
 
 ## M4 — Personal and portable
 

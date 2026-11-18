@@ -2,6 +2,20 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-18 — M3: today’s weather, cached
+
+- Added `src/lib/weather.ts`: WMO code mapping, a feels-like clothing band, cache freshness, relative update labels, payload and place parsing, and the two keyless Open-Meteo calls.
+- The weather band is a starting heuristic: cold below 5°C, cool below 14, mild below 22, warm below 28, hot above. It only reads feels-like, not the raw temperature.
+- Location and the last reading live in `localStorage` (`wardrobe.place.v1`, `wardrobe.weather.v1`) with a 30-minute TTL. That avoided a Dexie migration; the cache is a device preference, not wardrobe data.
+- Rebuilt the Today tab as `TodayView`: a local-date eyebrow, the weather card, then the existing wear log. The wear log heading is now an `h2` under the page `h1`.
+- The weather card starts from the saved place and cached reading, fetches only when stale, and exposes Refresh. A failed refresh keeps the last reading visible with an explicit warning instead of blanking the card.
+- Geocoding search accepts ≥2 letters, lists six candidates with their region and country, and marks the current one. A denied geolocation leaves the place untouched and suggests search.
+- Coordinates are rounded to three decimals before they are stored or sent. Nothing else leaves the browser.
+- Added `weather.test.ts` (25 tests): band boundaries, every WMO group, wet conditions, cache freshness including future clocks, relative labels, payload validation, malformed place rows, and the localStorage round trip. Suite is now 110.
+- Verified in a browser at 1440 px and 390 px: empty state, Bandung search and selection, weather render, reload with zero weather requests (cache hit), Refresh issuing exactly one request, denied geolocation fallback, and no horizontal overflow.
+
+**Next:** M3 slice 2 — the occasion picker and the rules-based suggestion with a short “why”.
+
 ## 2026-11-18 — M2: wear logging and the wear log
 
 - The outfit dialog now has “Wore this today”. It writes a `wearEvents` row, and a live query flips the button to “Logged for today”, so the same look cannot be logged twice in a day. The click handler re-checks before writing to cover a fast double press.

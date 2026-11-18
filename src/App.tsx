@@ -5,8 +5,8 @@ import { AddItemView } from './components/AddItemView'
 import { Header } from './components/Header'
 import { ItemDetail } from './components/ItemDetail'
 import { OutfitsView } from './components/OutfitsView'
+import { TodayView } from './components/TodayView'
 import { WardrobeView } from './components/WardrobeView'
-import { WearHistoryView } from './components/WearHistoryView'
 import { db } from './db'
 import type { ItemStatus, Tab } from './types'
 
@@ -101,7 +101,7 @@ function App() {
 
         {tab === 'today' &&
           (items ? (
-            <WearHistoryView
+            <TodayView
               items={items}
               onSeeOutfits={() => setTab('outfits')}
             />
@@ -116,7 +116,7 @@ function App() {
             <Lock className="h-3.5 w-3.5" />
             Local-first. Your photos never leave this browser.
           </p>
-          <p>Early build · M2 complete</p>
+          <p>Early build · M3 in progress</p>
         </div>
       </footer>
 
