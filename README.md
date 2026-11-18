@@ -9,7 +9,6 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 ![Wardrobe home](screenshots/home.png)
 
 ## What works today
-
 - Add a piece from a photo (camera or library on mobile)
 - Crop the photo before saving, or re-crop a saved one, with free, square, 4:5, and 3:4 frames
 - Remove the background in the browser, leaving the piece on a transparent cutout
@@ -49,6 +48,10 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 
 ![Edit a piece](screenshots/edit-item.png)
 
+![Cost per wear and wardrobe gaps](screenshots/insights-panel.png)
+
+![Color palette and undertone preferences](screenshots/palette-panel.png)
+
 ![Back up and restore](screenshots/backup-panel.png)
 
 ![Build an outfit](screenshots/outfits-builder.png)
@@ -57,15 +60,15 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 
 ![Outfit detail](screenshots/outfit-detail.png)
 
-![Today’s weather card](screenshots/weather.png)
-
-![Outfit suggestions](screenshots/suggestions.png)
+![Today’s suggestions](screenshots/today.png)
 
 ![Wear log](screenshots/wear-log.png)
 
+![On a phone](screenshots/mobile-wardrobe.png)
+
 ## Planned
 
-- Accessibility pass and a refreshed demo
+- A short demo animation
 
 See [docs/roadmap.md](docs/roadmap.md) for the order and acceptance criteria.
 
@@ -174,6 +177,8 @@ public/
   manifest.webmanifest    PWA name, colors, and icons
   sw.js                   offline shell cache and fetch strategy
   icons/                  install icons (192, 512, maskable)
+scripts/
+  demo-seed.mjs           browser seed that fills the wardrobe with a demo closet for screenshots
 screenshots/              documentation screenshots
 ```
 

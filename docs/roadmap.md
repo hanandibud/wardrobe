@@ -72,7 +72,7 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 - [x] Color palette and undertone preferences (editable, clearly heuristic)
 - [x] Cost-per-wear and wardrobe gap insights
 - [x] Accessibility pass (keyboard, focus, labels, contrast)
-- [ ] Demo GIF and refreshed screenshots
+- [x] Refreshed screenshots and a demo seed
 
 **Acceptance:** install the app on a phone home screen, open it offline, and add a piece.
 
@@ -85,6 +85,8 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 **Delivered (2026-11-18):** slice four added a wardrobe ledger. A piece can carry an optional price in whatever currency the user uses — it is a number, never converted. The insights panel on the wardrobe page shows the total value of priced pieces, the average cost per wear across their logged wears, and the top pieces by cost per wear. It also names the gaps a small wardrobe tends to have: a base, a formal option, warmth at both ends, shoes, rain-ready shoes, and a neutral anchor. Prices are optional and ride along in the v2 backup.
 
 **Delivered (2026-11-18):** slice five was an accessibility pass. A global `:focus-visible` rule gives every control a visible keyboard focus ring, including native inputs that previously showed none when tabbed to. The secondary buttons that had missed rings — the cancel and confirm actions in the delete confirmations, the rename cancel, the crop dialog's cancel, the photo overlay actions, and the weather and outfit-builder back buttons — now carry the same accent ring as their primary siblings. The toast is an explicit `aria-live="polite"` region so re-renders announce. No behavior or data changed.
+
+**Delivered (2026-11-18):** slice six refreshed the documentation screenshots and shipped the seed behind them. `scripts/demo-seed.mjs` fills the `wardrobe` database with a believable demo closet — twelve garments as inline SVG silhouettes across every category, two saved looks, and two wear events — so the grid, palette, and insights panels all have real data to show. It is a browser script because photos are Blobs in IndexedDB, and it is idempotent: each run rebuilds from scratch. Against that closet the README gallery was re-captured at the real widths, plus three new shots: the insights panel, the palette panel, and the wardrobe on a phone at 390 px. An animated demo is still open under "Later".
 
 ## Later, only if the core is solid
 

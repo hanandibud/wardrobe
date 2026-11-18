@@ -2,6 +2,16 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-18 — M4: real screenshots from a real demo closet
+
+- Added `scripts/demo-seed.mjs`, a browser seed that fills the `wardrobe` database with a demo closet: twelve garments across every category, two saved looks, and two wear events (one loved). It is idempotent — each run deletes and rebuilds the database, so repeat runs give the same closet.
+- The garments are inline SVG silhouettes coloured per piece, turned into Blobs. They render as real thumbnails, so the wardrobe grid, outfit collages, palette derivation, and insights all have genuine data. No photos are committed and nothing is fetched.
+- It is a browser script, not a Node script, because photos are Blobs in IndexedDB and `createImageBitmap`, `indexedDB`, and the object stores all need a browser. It exposes `window.__wardrobeSeed()` and is injected into a running page.
+- Captured fresh screenshots against that closet at the real widths — 1440×1000 desktop and 390×844 mobile — and added three: the insights panel, the palette panel, and the wardrobe on a phone. The home, outfits, builder, detail, today, wear-log, and item-detail shots now show a populated wardrobe instead of an empty or `Test …` one; the multi-step crop, cutout, and backup shots are from earlier builds and still describe their flows correctly.
+- A short animated demo remains open under the roadmap's "Later" list; this slice ships the screenshots and the seed behind them.
+
+**Next:** M4 is complete. Later candidates: an animated demo, multi-device sync, on-device learned ranking.
+
 ## 2026-11-18 — M4: an accessibility pass on the controls already there
 
 - Added a global `:focus-visible` rule in `src/index.css` so every control shows a 2 px accent ring on keyboard focus. Native inputs (search, text fields, the custom color pickers, the file input) previously had no visible indicator when tabbed to, because Tailwind's `focus:` ring styles only the mouse-focus state. A base rule guarantees an indicator everywhere without touching each control.
