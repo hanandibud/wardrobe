@@ -66,8 +66,8 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 
 ## M4 — Personal and portable
 
-- [ ] PWA manifest and service worker
-- [ ] GitHub Pages deployment workflow
+- [x] PWA manifest and service worker
+- [x] GitHub Pages deployment workflow
 - [ ] Export/import polish
 - [ ] Color palette and undertone preferences (editable, clearly heuristic)
 - [ ] Cost-per-wear and wardrobe gap insights
@@ -75,6 +75,8 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 - [ ] Demo GIF and refreshed screenshots
 
 **Acceptance:** install the app on a phone home screen, open it offline, and add a piece.
+
+**Delivered (2026-11-18):** slice one added the installable shell. `public/manifest.webmanifest` and 192/512/maskable icons give the app an identity; a hand-written `public/sw.js` precaches the shell plus the hashed entry JS/CSS read from the built HTML, serves navigation network-first with a cached fallback, and serves same-origin assets cache-first. The app registers the worker after load in production only. The Pages deployment workflow had already been shipping every push since M1, so its checkbox was stale; no new deployment code was needed.
 
 ## Later, only if the core is solid
 

@@ -92,6 +92,15 @@ Weather is intentionally outside Dexie, so the feature needed no schema migratio
 
 `wardrobe.skips.v1` stores the current day’s skipped suggestion keys as `{ date, keys }`. A record from another day is ignored, so skips reset naturally at midnight. Like the weather cache, it is not wardrobe data and is not exported.
 
+## App shell cache (Cache Storage)
+
+The service worker keeps the installable shell in Cache Storage under `wardrobe-shell-v1`, separate from IndexedDB:
+
+- Entries are the HTML, manifest, favicon, install icons, and the hashed entry JS/CSS. Photos, outfit data, and weather are never cached.
+- It is device-local like the weather cache and is not part of a backup. Clearing site data removes it; the next online load recreates it.
+- Activate deletes any cache whose name does not match the current `CACHE_NAME`, so bump that constant when the shell list or fetch strategy changes.
+- The ~24 MB cutout WASM and the downloaded model are not cached; the first cutout still needs the network.
+
 ## Backup format (M1)
 
 `src/lib/backup.ts` exports one versioned JSON file:

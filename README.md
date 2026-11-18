@@ -2,7 +2,7 @@
 
 A local-first virtual wardrobe. Add a garment with one photo, let the app pull its main colors, and build a closet you can actually use. The long-term goal is a daily outfit suggestion based on the weather, the occasion, and what is clean.
 
-> **Status: M3 complete.** Add, edit, crop, cut out, and back up a local wardrobe, build and save looks from it, keep a wear log, check today’s weather, and get up to three outfit suggestions that learn a little from the looks you love. Everything personal stays in your browser — no account, no backend, no paid API.
+> **Status: M4 in progress.** Add, edit, crop, cut out, and back up a local wardrobe, build and save looks from it, keep a wear log, check today’s weather, and get daily outfit suggestions. Install it to your home screen and reopen it offline. Everything personal stays in your browser — no account, no backend, no paid API.
 
 **Live:** https://hanandibud.github.io/wardrobe/
 
@@ -31,6 +31,7 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 - Press “Wear this” to save the look and log the wear in one step
 - Skip a pick for the rest of the day
 - Love a wear in the log so pieces from that look rise in later picks
+- Install the app to your home screen and open it offline
 - Open a piece to see its details
 - Mark a piece clean, needs wash, or in laundry
 - Remove a piece
@@ -61,7 +62,6 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 
 ## Planned
 
-- Installable PWA
 - Skin-tone and color-preference tuning (as a preference, not a scientific claim)
 
 See [docs/roadmap.md](docs/roadmap.md) for the order and acceptance criteria.
@@ -100,6 +100,17 @@ npm run dev
 ```
 
 Open the local URL Vite prints. To use it on your phone, connect both devices to the same Wi-Fi and open the **Network** URL. Windows Firewall may ask for permission the first time.
+
+## Install it
+
+The production build is a PWA. The [live site](https://hanandibud.github.io/wardrobe/) is the easiest place to install it:
+
+- **Android / Chrome:** open the site, then use the browser menu → **Install app** (or the install icon in the address bar).
+- **iPhone / Safari:** open the site, tap **Share**, then **Add to Home Screen**.
+
+Once opened online, the app shell is cached, so the wardrobe, add form, outfits, and wear log keep working offline. Two things still need a connection: a weather refresh, and the first background removal of a session (the cutout model is ~40 MB and deliberately not cached).
+
+After a deploy, the installed app picks up the new version on its next online open.
 
 Useful commands:
 
@@ -152,6 +163,10 @@ src/
     weather.ts            Open-Meteo fetch, WMO mapping, bands, cache
     *.test.ts             Vitest unit tests for the pure logic
 docs/                     product, architecture, setup, roadmap, ADRs
+public/
+  manifest.webmanifest    PWA name, colors, and icons
+  sw.js                   offline shell cache and fetch strategy
+  icons/                  install icons (192, 512, maskable)
 screenshots/              documentation screenshots
 ```
 
@@ -161,6 +176,7 @@ screenshots/              documentation screenshots
 - Photos are never uploaded. Background removal runs locally; only the model file is downloaded.
 - The weather request sends only rounded coordinates to Open-Meteo, a keyless free service. The chosen place and last reading stay in `localStorage`.
 - Skipped picks for the current day are kept in `localStorage` too; they never leave the browser.
+- The service worker caches the app shell (HTML, JavaScript, CSS, icons) in the browser’s Cache Storage. It never caches photos, API responses, or the cutout model.
 - IndexedDB is per browser and per device. Clearing site data deletes the wardrobe unless you keep a backup. Export/import is built in.
 - Backup files contain your photos. Treat them like personal documents and do not commit or share them.
 

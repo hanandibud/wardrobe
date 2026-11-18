@@ -1,6 +1,6 @@
 # Architecture
 
-## Current shape (M3 complete)
+## Current shape (M4 in progress)
 
 ```mermaid
 flowchart LR
@@ -13,9 +13,12 @@ flowchart LR
   UI --> WX[Open-Meteo weather]
   WX --> UI
   UI --> LS[(localStorage: place + reading)]
+  UI --> SW[Service worker]
+  SW --> CACHE[(Cache Storage: app shell)]
+  SW --> NET[Network: HTML + hashed assets]
 ```
 
-There is no backend and no account. Photos stay in IndexedDB. The only network requests are keyless: Open-Meteo weather and geocoding, plus the cutout model fetched from a public CDN on first use.
+There is no backend and no account. Photos stay in IndexedDB. The only network requests are keyless: Open-Meteo weather and geocoding, plus the cutout model fetched from a public CDN on first use. The service worker is the only piece that sits between the app and the network for the shell itself.
 
 ## Why local-first
 
@@ -24,6 +27,41 @@ There is no backend and no account. Photos stay in IndexedDB. The only network r
 - **Simple:** one static build instead of an API, workers, and a database.
 - **Fast:** reading local data does not wait on a network.
 - **Honest trade-off:** data lives in one browser profile on one device. Export/import is the escape hatch, and optional sync comes later.
+
+## Installable shell (M4, shipped)
+
+The production build is a PWA. No dependency was added; the manifest and worker are small enough to read in this repo.
+
+- `public/manifest.webmanifest` — name, short name, description, paper theme, `standalone`, and relative `id`/`start_url`/`scope` so the same build works at a domain root or under `/wardrobe/`. Icons are 192, 512, and a maskable 512 generated from `public/icons/icon.svg`.
+- `index.html` — links the manifest and the Apple touch icon, and adds the mobile web app meta tags. `theme-color` matches the paper background.
+- `src/main.tsx` — registers `${BASE_URL}sw.js` after the window `load` event, production only, and swallows failures. A blocked worker never breaks the app; dev keeps the normal Vite reload flow.
+
+### Service worker strategy
+
+`public/sw.js` is deliberately small:
+
+| Request | Strategy |
+| --- | --- |
+| Navigation | Network-first; cache the fresh HTML as `./index.html`; fall back to that cached copy offline |
+| Same-origin asset | Cache-first; on a miss, fetch and store a 200 response |
+| `.wasm` | Not intercepted, so the 24 MB cutout runtime is never cached |
+| Cross-origin / outside scope | Not intercepted |
+
+Install precaches `./`, `index.html`, the manifest, the favicon, and the install icons. It then fetches `index.html`, parses the hashed entry `./assets/*.js` and `*.css` out of it, and caches those too, so one online visit is enough to boot offline. `skipWaiting()` and `clients.claim()` make the first visit take control without a second reload. Activate deletes every cache except the current `CACHE_NAME`.
+
+Storing the HTML network-first means a deploy is picked up on the next online load; the hashed assets are immutable, so cache-first is safe. Bump `CACHE_NAME` whenever the shell list or the strategy changes.
+
+One browser detail is worth keeping in mind: Vite's preview server sends `Vary: Origin`, and module/stylesheet requests include an `Origin` header while the precached entries do not. Matching with `{ ignoreVary: true }` keeps the cached shell usable. Without it the HTML loaded offline but its JS and CSS did not.
+
+### Offline limits
+
+- The first visit must be online; after that the shell, wardrobe, add form, looks, and wear log all work offline.
+- Weather refresh still needs a connection. The last reading stays visible.
+- The first background removal still needs a connection; the ~40 MB model and the ONNX WASM are intentionally outside Cache Storage. Later cutouts in the same browsing session reuse the downloaded model.
+- Cache Storage is device-local and is not part of a backup. Clearing site data removes it; the next online visit recreates it.
+- Service workers require HTTPS or `localhost`, which GitHub Pages provides.
+
+Verified on the production preview at 390 px: one online visit produced nine cache entries, an offline reload rendered the wardrobe, and adding a photo (crop → name → save) worked with the network off. The check is manual because the worker lifecycle is browser behavior, not pure logic.
 
 ## Components
 

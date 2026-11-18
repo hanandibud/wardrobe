@@ -2,6 +2,21 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-18 — M4: install it, then open it offline
+
+- Started M4 with the installable shell, which is the milestone’s acceptance test. No dependency: `public/manifest.webmanifest`, a hand-written `public/sw.js`, and icons generated from the existing hanger silhouette.
+- The manifest uses relative `id`, `start_url`, and `scope` because `vite.config.ts` builds with `base: './'` for the GitHub Pages project path. `display: standalone`, paper theme, and 192/512/maskable icons under `public/icons/`.
+- `index.html` links the manifest and Apple touch icon and adds the mobile web app meta tags. Registration lives in `src/main.tsx`, after `load`, production only, and swallows failures so a blocked worker cannot break the app.
+- The worker precaches the shell and then reads the hashed entry JS/CSS out of the built HTML. That was the difference between “offline works after one reload” and “offline works after one online visit”.
+- Navigation is network-first with a cached `index.html` fallback; same-origin assets are cache-first and runtime-cached. `.wasm` is deliberately bypassed so the 24 MB cutout runtime never lands in Cache Storage.
+- Found and fixed a real offline bug: Vite preview sends `Vary: Origin`, and module/style requests carry an `Origin` header that the precache entries lack, so `cache.match` missed and the offline page rendered as empty HTML. `{ ignoreVary: true }` on the shell cache fixed it.
+- Activate deletes other cache names; bump `wardrobe-shell-v1` when the shell list or strategy changes. The installed app picks up a deploy on its next online open.
+- No Dexie change. Cache Storage is device-local, is not exported, and is safe to clear.
+- Verified on `npm run preview` at 390 px from a clean registration: one online visit produced nine cache entries, an offline reload rendered the wardrobe, and Add → upload → crop → name → save worked with the network off, storing the item with extracted colors.
+- Updated the README install section, architecture, data model, and roadmap, and moved the footer to “Early build · M4 in progress”. Corrected the stale Pages checkbox; the workflow has been live since M1.
+
+**Next:** M4 slice 2 — export/import polish, then palette preferences, insights, accessibility, and refreshed screenshots.
+
 ## 2026-11-18 — M3: love a look, and the picks remember
 
 - Added a heart toggle to every wear-log row. It flips `WearEvent.feedback` between `loved` and absent, one event at a time; the other hearts disable while the write is in flight so a fast double tap cannot race.
