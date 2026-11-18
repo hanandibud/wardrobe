@@ -2,6 +2,15 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-18 — M4: a deploy should not hide behind the HTTP cache
+
+- Live-checking the backup release found the new HTML on Pages but the old bundle still running. GitHub Pages sends `Cache-Control: max-age=600` for HTML, and the worker’s network-first fetch was accepting that HTTP-cached response.
+- Navigation now calls `fetch(request, { cache: 'no-cache' })`. It still revalidates with the ETag, so a deploy is visible on the next online load without a ten-minute wait or a forced reload.
+- Bumped the shell cache to `wardrobe-shell-v2` because the strategy changed; activate deletes v1. No data or schema change.
+- Verified on preview from a clean registration: v2 installs nine entries and the offline reload still renders. The live backup panel was confirmed with a cache-busting load.
+
+**Next:** M4 slice 3 — editable palette and undertone preferences.
+
 ## 2026-11-18 — M4: a backup that includes the looks and the log
 
 - Bumped the backup format to v2. It now carries saved looks and wear events, including `loved`, so a restore is the whole wardrobe rather than just the pieces.

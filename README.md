@@ -110,7 +110,7 @@ The production build is a PWA. The [live site](https://hanandibud.github.io/ward
 
 Once opened online, the app shell is cached, so the wardrobe, add form, outfits, and wear log keep working offline. Two things still need a connection: a weather refresh, and the first background removal of a session (the cutout model is ~40 MB and deliberately not cached).
 
-After a deploy, the installed app picks up the new version on its next online open.
+After a deploy, the app revalidates the shell on each online open, so updates arrive without reinstalling. Most changes show up on the next open; an update to the offline worker itself may take one extra open.
 
 Useful commands:
 

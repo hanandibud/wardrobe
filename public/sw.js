@@ -7,7 +7,7 @@
  * cached: it would dominate storage and cutout still needs the network on
  * first use.
  */
-const CACHE_NAME = 'wardrobe-shell-v1'
+const CACHE_NAME = 'wardrobe-shell-v2'
 
 const SHELL = [
   './',
@@ -75,7 +75,10 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      // `no-cache` still revalidates with the ETag, but it stops the browser's
+      // HTTP cache from hiding a deploy: GitHub Pages serves HTML with a
+      // 10-minute max-age.
+      fetch(request, { cache: 'no-cache' })
         .then((response) => {
           const copy = response.clone()
           caches

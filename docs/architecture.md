@@ -49,7 +49,7 @@ The production build is a PWA. No dependency was added; the manifest and worker 
 
 Install precaches `./`, `index.html`, the manifest, the favicon, and the install icons. It then fetches `index.html`, parses the hashed entry `./assets/*.js` and `*.css` out of it, and caches those too, so one online visit is enough to boot offline. `skipWaiting()` and `clients.claim()` make the first visit take control without a second reload. Activate deletes every cache except the current `CACHE_NAME`.
 
-Storing the HTML network-first means a deploy is picked up on the next online load; the hashed assets are immutable, so cache-first is safe. Bump `CACHE_NAME` whenever the shell list or the strategy changes.
+Storing the HTML network-first means a deploy is picked up on the next online load; the hashed assets are immutable, so cache-first is safe. The navigation fetch uses `cache: 'no-cache'` rather than the default HTTP cache: GitHub Pages sends `Cache-Control: max-age=600` for HTML, so without it a fresh deploy could be hidden for ten minutes. `no-cache` still revalidates with the ETag. A change to `sw.js` itself takes two opens: the first installs the new worker, the following load uses it. Bump `CACHE_NAME` (currently `wardrobe-shell-v2`) whenever the shell list or the strategy changes.
 
 One browser detail is worth keeping in mind: Vite's preview server sends `Vary: Origin`, and module/stylesheet requests include an `Origin` header while the precached entries do not. Matching with `{ ignoreVary: true }` keeps the cached shell usable. Without it the HTML loaded offline but its JS and CSS did not.
 

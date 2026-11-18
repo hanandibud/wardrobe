@@ -94,7 +94,7 @@ Weather is intentionally outside Dexie, so the feature needed no schema migratio
 
 ## App shell cache (Cache Storage)
 
-The service worker keeps the installable shell in Cache Storage under `wardrobe-shell-v1`, separate from IndexedDB:
+The service worker keeps the installable shell in Cache Storage under `wardrobe-shell-v2`, separate from IndexedDB:
 
 - Entries are the HTML, manifest, favicon, install icons, and the hashed entry JS/CSS. Photos, outfit data, and weather are never cached.
 - It is device-local like the weather cache and is not part of a backup. Clearing site data removes it; the next online load recreates it.
