@@ -22,6 +22,7 @@ import { useObjectUrl } from '../hooks/useObjectUrl'
 import { extractPalette, nameColor } from '../lib/colors'
 import { cutOutBackground, type CutoutProgress } from '../lib/cutout'
 import { prepareImage, validateImageFile } from '../lib/images'
+import { parsePrice } from '../lib/insights'
 import { isQuotaError } from '../lib/storage'
 import {
   CATEGORY_OPTIONS,
@@ -84,6 +85,9 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
   )
   const [status, setStatus] = useState<ItemStatus>(item?.status ?? 'clean')
   const [notes, setNotes] = useState(item?.notes ?? '')
+  const [price, setPrice] = useState(
+    item?.price !== undefined ? String(item.price) : '',
+  )
   const [file, setFile] = useState<File | null>(null)
   const [cropSource, setCropSource] = useState<{
     blob: Blob
@@ -221,6 +225,7 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
     setSeasons(SEASON_OPTIONS.map((option) => option.value))
     setStatus('clean')
     setNotes('')
+    setPrice('')
     setFile(null)
     setPaletteState('idle')
     setCutoutState('idle')
@@ -243,6 +248,17 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
       return
     }
 
+    const trimmedPrice = price.trim()
+    let parsedPrice: number | undefined
+    if (trimmedPrice !== '') {
+      const parsed = parsePrice(trimmedPrice)
+      if (parsed === null) {
+        setError('Enter the price as a number, or leave it blank.')
+        return
+      }
+      parsedPrice = parsed
+    }
+
     setError(null)
     setSaving(true)
 
@@ -262,6 +278,7 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
         seasons,
         status,
         notes: notes.trim() || undefined,
+        price: parsedPrice,
         image,
       }
 
@@ -288,6 +305,8 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
 
   const nameId = `${formId}-name`
   const notesId = `${formId}-notes`
+  const priceId = `${formId}-price`
+  const priceHintId = `${formId}-price-hint`
 
   return (
     <>
@@ -641,6 +660,28 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
             ))}
           </div>
         </Field>
+
+        <div className="space-y-2">
+          <label htmlFor={priceId} className="text-sm font-medium text-ink">
+            Price paid <span className="font-normal text-muted">(optional)</span>
+          </label>
+          <input
+            id={priceId}
+            type="number"
+            inputMode="decimal"
+            min="0.01"
+            step="0.01"
+            value={price}
+            onChange={(event) => setPrice(event.target.value)}
+            placeholder="e.g. 48"
+            aria-describedby={priceHintId}
+            className={inputClass}
+          />
+          <p id={priceHintId} className="text-[11px] leading-5 text-muted">
+            In the currency you use for your wardrobe. Only used for cost per
+            wear.
+          </p>
+        </div>
 
         <div className="space-y-2">
           <label htmlFor={notesId} className="text-sm font-medium text-ink">

@@ -80,6 +80,7 @@ Indexes are chosen for the planned queries:
 - One wear per look per day is a UI rule. The table has no unique index; `OutfitDetail` checks for an existing row before writing and again inside the click handler.
 - Deleting a look deletes its wear events in the same transaction, so the log never points at a missing outfit.
 - `WearEvent.feedback` is used from M3 slice 3: the wear log toggles it between `loved` and absent. Only `loved` changes a suggestion score; the other values exist in the union but are never written. `WardrobeItem.lastWornAt` is still unused — recency is derived from the wear events instead of stored on the item.
+- `WardrobeItem.price` is optional and holds a plain number in the user's own currency. There is no currency field and nothing is converted, so cost per wear is simply price divided by logged wears. An unusable price is treated as no price.
 
 ## Weather cache (localStorage)
 
@@ -185,7 +186,6 @@ interface WardrobeItem {
   brand?: string
   size?: string
   purchaseDate?: string
-  price?: number
   care?: string
   favorite?: boolean
 }

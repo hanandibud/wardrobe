@@ -71,7 +71,7 @@ Owns the app shell: active tab, selected item, toast, and the live query to Dexi
 
 ### `src/components/ItemForm.tsx`
 
-One form powers both capture and editing. It seeds state from an optional saved item, validates and compresses a new photo, extracts a palette, and writes with either `items.add` or `items.update`. `AddItemView` wraps it as a page; `ItemDetail` mounts it in edit mode with a cancel path. Replacing a photo only touches the saved Blob when the user saves the form.
+One form powers both capture and editing. It seeds state from an optional saved item, validates and compresses a new photo, extracts a palette, accepts an optional price, and writes with either `items.add` or `items.update`. `AddItemView` wraps it as a page; `ItemDetail` mounts it in edit mode with a cancel path. Replacing a photo only touches the saved Blob when the user saves the form.
 
 ### `src/db.ts`
 
@@ -146,6 +146,19 @@ Location can come from the browser geolocation permission or from a city search.
 ### `src/components/TodayView.tsx`
 
 The Today page shell: a local-date eyebrow, the `Today` heading, the weather card, the suggestion cards, and the wear log. It holds the current weather snapshot so the suggestions can react to it, and seeds that snapshot from the cache before the panel fetches. Splitting it out keeps `App` to tab routing.
+
+### `src/lib/insights.ts`
+
+Pure helpers behind the wardrobe ledger:
+
+- `parsePrice` rounds to two decimals and accepts only a positive finite amount, so a blank, zero, negative, or absurd value becomes no price. `formatAmount` renders an amount with `Intl.NumberFormat` and no currency symbol, because the unit belongs to the user.
+- `wearsByItem` joins wear events through saved looks and counts each piece once per wear, so a look that lists a piece twice cannot inflate a wear.
+- `costSummary` returns the total value of priced pieces, the average cost per wear across their logged wears, and one row per priced piece. Rows with no wear carry a null value and sort last so the UI can name them instead of hiding them.
+- `wardrobeGaps` maps the checklist against the suggestion engine's real constraints: a base (top and bottom, or a dress), a piece rated formal, warmth at both ends, shoes, a rain-ready pair, and a neutral anchor. It returns nothing for an empty wardrobe and nothing when the basics are covered.
+
+### `src/components/InsightsPanel.tsx`
+
+The ledger card on the wardrobe page. It reads outfits and wear events live, derives the cost summary and the gaps, and renders three stats, the top pieces by cost per wear, and the gap list. Each state is intentional: no prices yet, priced but never worn, and fully costed. Copy says plainly that prices stay in the currency the user enters and nothing is converted.
 
 ### `src/lib/preferences.ts`
 
@@ -269,6 +282,7 @@ The canvas work is a thin wrapper: `paletteFromImage` takes a raw RGBA buffer an
 - `weather.test.ts` — band boundaries, WMO code mapping, wet conditions, cache freshness (including future timestamps), update labels, payload/place parsing, and the localStorage round trip.
 - `recommend.test.ts` — season mapping, neutrals and hue harmony, every hard filter, rain and heat exclusions, dress vs. top/bottom bases, formality, the three-pick cap, determinism, recency, loved pieces, skips, preference scoring, and the wear/loved joins.
 - `preferences.test.ts` — tolerant parsing, capped and mutually exclusive color lists, blocked-storage fallbacks, palette aggregation, perceptual matching, tone and contrast classification, and the Today summary.
+- `insights.test.ts` — price parsing and formatting, wear counting through looks, the cost summary including unworn and unpriced pieces, and every gap rule including the empty-wardrobe case.
 
 The canvas, IndexedDB, and pointer-drag paths are verified in a browser instead; they are covered by the manual checks recorded in the devlog. CI runs the tests between typecheck and build.
 

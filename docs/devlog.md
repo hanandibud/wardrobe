@@ -2,6 +2,18 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-18 — M4: what each piece costs to keep in rotation
+
+- Added `src/lib/insights.ts` and `src/components/InsightsPanel.tsx`. The panel sits on the wardrobe page and shows the value of the priced pieces, the average cost per wear across logged wears, the pieces costing the most per wear, and the gaps a small wardrobe tends to have.
+- A piece can now carry an optional `price`. It is a plain number in whatever currency the user uses; there is no currency setting and nothing is converted, so the label says so. Cost per wear is price divided by logged wears, and a piece counts once per wear event even if a look lists it twice.
+- The price field is optional and lives in the add/edit form beside Notes. Parsing rounds to cents and rejects blank, zero, negative, non-numeric, and absurdly large values with a readable message. The browser's native `number` input blocks letters before the form's own check.
+- Gaps are a checklist against the rules the suggestion engine actually uses: a top and bottom or a dress, something rated formal, warmth at both ends, shoes, a rain-ready pair rated medium warmth or above, and a neutral anchor. An empty wardrobe returns no gaps, and a broad wardrobe returns none.
+- Prices ride along in the v2 backup: exported, imported with the same rounding and rejection rules, and absent when blank. The item shape change needs no Dexie index, so there is no schema bump.
+- Added `insights.test.ts` (16 tests) covering price parsing, locale-neutral amount formatting, wear counting, cost summary including unworn and unpriced pieces, and each gap rule. Added a backup test for a carried price and a rejected one. Suite is 192.
+- Verified in a browser at 390 px and 1440 px: the panel's empty, priced-but-unworn, and fully-costed states each read correctly; entering 120 on a piece showed “Price paid · 120” and a cost per wear of 120 after one logged wear; a huge price was rejected with the readable message; and clearing the price removed the line again. No horizontal overflow at either width.
+
+**Next:** M4 slice 5 — accessibility pass, then refreshed screenshots.
+
 ## 2026-11-18 — M4: a palette you can tune, not a verdict
 
 - Added `src/lib/preferences.ts` plus `src/components/PalettePanel.tsx`. The panel sits on the wardrobe page and derives the colors that actually appear in the wardrobe, most-used first, with a piece count beside each swatch.

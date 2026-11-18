@@ -2,7 +2,7 @@
 
 A local-first virtual wardrobe. Add a garment with one photo, let the app pull its main colors, and build a closet you can actually use. The long-term goal is a daily outfit suggestion based on the weather, the occasion, and what is clean.
 
-> **Status: M4 in progress.** Add, edit, crop, cut out, and back up a local wardrobe, build and save looks from it, keep a wear log, check today’s weather, and get daily outfit suggestions tuned by your color palette. Install it to your home screen and reopen it offline. Everything personal stays in your browser — no account, no backend, no paid API.
+> **Status: M4 in progress.** Add, edit, crop, cut out, and back up a local wardrobe, build and save looks from it, keep a wear log, check today's weather, and get daily outfit suggestions tuned by your color palette. See what each piece costs per wear and which wardrobe gaps are worth filling. Install it to your home screen and reopen it offline. Everything personal stays in your browser — no account, no backend, no paid API.
 
 **Live:** https://hanandibud.github.io/wardrobe/
 
@@ -32,6 +32,8 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 - Skip a pick for the rest of the day
 - Love a wear in the log so pieces from that look rise in later picks
 - Set loved and avoided colors, an undertone, and a contrast preference; picks use them as small tie-breakers
+- Record what a piece cost and see the cost per wear across your logged wears
+- See the wardrobe gaps worth noticing: a base, a formal option, warmth at both ends, shoes, and a neutral
 - Install the app to your home screen and open it offline
 - Open a piece to see its details
 - Mark a piece clean, needs wash, or in laundry
@@ -63,7 +65,6 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 
 ## Planned
 
-- Cost-per-wear and wardrobe gap insights
 - Accessibility pass and a refreshed demo
 
 See [docs/roadmap.md](docs/roadmap.md) for the order and acceptance criteria.
@@ -148,6 +149,7 @@ src/
     WearHistoryView.tsx   wear log grouped by day
     CropDialog.tsx        crop frame with drag and resize handles
     BackupPanel.tsx       export/import controls and status
+    InsightsPanel.tsx     cost per wear and wardrobe gap insights
     PalettePanel.tsx      palette, undertone, and contrast preferences
     StorageStatus.tsx     storage usage meter and persistence request
     AddItemView.tsx       add page shell
@@ -159,6 +161,7 @@ src/
     crop.ts               crop geometry and canvas cropping
     cutout.ts             in-browser background removal wrapper
     images.ts             image validation and WebP compression
+    insights.ts           price parsing, cost per wear, wardrobe gaps
     outfits.ts            selection toggling, category groups, item resolution
     preferences.ts        palette storage, color matching, tone, contrast
     recommend.ts          hard filters, combos, scoring, reasons, skips

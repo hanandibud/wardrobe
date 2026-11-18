@@ -2,6 +2,7 @@ import { Calendar, Pencil, Trash2, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useObjectUrl } from '../hooks/useObjectUrl'
 import { nameColor } from '../lib/colors'
+import { formatAmount } from '../lib/insights'
 import {
   CATEGORY_LABELS,
   FORMALITY_LABELS,
@@ -191,6 +192,11 @@ export function ItemDetail({
               <Calendar className="h-3.5 w-3.5" />
               Added {formatDate(item.createdAt)}
             </p>
+            {item.price !== undefined && (
+              <p className="mt-1 text-xs tabular-nums text-muted">
+                Price paid · {formatAmount(item.price)}
+              </p>
+            )}
 
             <div className="mt-6 space-y-5">
               <div>

@@ -1,4 +1,5 @@
 import { db } from '../db'
+import { parsePrice } from './insights'
 import {
   CATEGORY_OPTIONS,
   OCCASION_OPTIONS,
@@ -42,6 +43,7 @@ interface BackupItem {
   seasons: Season[]
   status: ItemStatus
   notes?: string
+  price?: number
   image: string
   createdAt: number
   lastWornAt?: number
@@ -194,6 +196,7 @@ function parseBackupItem(value: unknown): BackupItem | null {
     seasons,
     status: value.status as ItemStatus,
     notes: typeof value.notes === 'string' ? value.notes : undefined,
+    price: parsePrice(value.price) ?? undefined,
     image: value.image,
     createdAt: value.createdAt,
     lastWornAt: isTimestamp(value.lastWornAt) ? value.lastWornAt : undefined,
@@ -346,6 +349,7 @@ export async function downloadBackup(): Promise<BackupCounts> {
       seasons: item.seasons,
       status: item.status,
       notes: item.notes,
+      price: item.price,
       image: await blobToDataUrl(item.image),
       createdAt: item.createdAt,
       lastWornAt: item.lastWornAt,
@@ -471,6 +475,7 @@ export async function importBackup(file: File): Promise<ImportResult> {
         seasons: backup.seasons,
         status: backup.status,
         notes: backup.notes,
+        price: backup.price,
         image,
         createdAt: backup.createdAt,
         lastWornAt: backup.lastWornAt,

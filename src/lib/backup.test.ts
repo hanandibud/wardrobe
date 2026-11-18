@@ -223,4 +223,18 @@ describe('parseBackup', () => {
     const result = parseBackup(backup([validItem({ lastWornAt: 1763500000000 })]))
     expect(result.items[0].lastWornAt).toBe(1763500000000)
   })
+
+  it('carries a usable price and drops an unusable one', () => {
+    const result = parseBackup(
+      backup([
+        validItem({ id: 1, price: 48.999 }),
+        validItem({ id: 2, name: 'Second piece', price: -3 }),
+        validItem({ id: 3, name: 'Third piece', price: 'free' }),
+      ]),
+    )
+
+    expect(result.items[0].price).toBe(49)
+    expect(result.items[1].price).toBeUndefined()
+    expect(result.items[2].price).toBeUndefined()
+  })
 })

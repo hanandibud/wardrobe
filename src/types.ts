@@ -76,6 +76,7 @@ export interface WardrobeItem {
   seasons: Season[]
   status: ItemStatus
   notes?: string
+  price?: number
   image: Blob
   createdAt: number
   lastWornAt?: number
