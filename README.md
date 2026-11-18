@@ -186,7 +186,7 @@ screenshots/              documentation screenshots
 
 - Photos and wardrobe data are stored in IndexedDB in your browser.
 - Photos are never uploaded. Background removal runs locally; only the model file is downloaded.
-- The weather request sends only rounded coordinates to Open-Meteo, a keyless free service. The chosen place and last reading stay in `localStorage`.
+- The weather request sends only rounded coordinates to Open-Meteo, a keyless free service. The chosen place and last reading stay in `localStorage`. When you search for a city, the place name you type is sent to Open-Meteo's geocoder to find matching coordinates.
 - Skipped picks for the current day are kept in `localStorage` too; they never leave the browser.
 - Color preferences are stored in `localStorage` on this device. They are not part of a backup and are never sent anywhere.
 - The service worker caches the app shell (HTML, JavaScript, CSS, icons) in the browser’s Cache Storage. It never caches photos, API responses, or the cutout model.
