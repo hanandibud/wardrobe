@@ -31,7 +31,7 @@ async function resizeToWebP(source: Blob): Promise<Blob> {
   const context = canvas.getContext('2d')
   if (!context) {
     bitmap.close()
-    return source
+    throw new Error('Could not process that image.')
   }
 
   context.drawImage(bitmap, 0, 0, width, height)
