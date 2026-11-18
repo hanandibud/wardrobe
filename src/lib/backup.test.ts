@@ -1,5 +1,30 @@
-import { describe, expect, it } from 'vitest'
-import { BACKUP_VERSION, parseBackup } from './backup'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+// The rest of the suite runs without an IndexedDB, so only the tests that
+// touch `importBackup` install a fake one. It must be installed before `./db`
+// (which opens Dexie) is imported, so everything here is dynamic.
+import 'fake-indexeddb/auto'
+
+// `importBackup` decodes each restored photo with browser APIs (fetch + a
+// canvas). Node has neither, so swap the decode for a pass-through: these
+// tests exercise the validation and the Dexie write/rollback, not the pixels.
+vi.mock('./images', () => ({
+  prepareRestoredImage: (blob: Blob) => Promise.resolve(blob),
+  prepareImage: (file: File) => Promise.resolve(file),
+  validateImageFile: () => undefined,
+}))
+
+const {
+  BACKUP_VERSION,
+  MAX_BACKUP_ITEMS,
+  MAX_BACKUP_OUTFITS,
+  MAX_BACKUP_WEAR_EVENTS,
+  MAX_RESTORED_IMAGE_BYTES,
+  decodedImageByteLength,
+  importBackup,
+  parseBackup,
+} = await import('./backup')
+const { db } = await import('../db')
 
 function validItem(overrides: Record<string, unknown> = {}) {
   return {
@@ -236,5 +261,123 @@ describe('parseBackup', () => {
     expect(result.items[0].price).toBe(49)
     expect(result.items[1].price).toBeUndefined()
     expect(result.items[2].price).toBeUndefined()
+  })
+
+  it('rejects a backup with more items than the cap', () => {
+    const tooMany = Array.from({ length: MAX_BACKUP_ITEMS + 1 }, (_, index) =>
+      validItem({ id: index + 1, name: `Piece ${index}`, createdAt: index }),
+    )
+
+    expect(() => parseBackup(backup(tooMany))).toThrow(
+      `That backup has ${MAX_BACKUP_ITEMS + 1} pieces. The most a backup can hold is ${MAX_BACKUP_ITEMS}.`,
+    )
+  })
+
+  it('rejects a backup with more looks than the cap', () => {
+    const outfits = Array.from({ length: MAX_BACKUP_OUTFITS + 1 }, (_, index) =>
+      validOutfit({ id: index + 1, name: `Look ${index}`, createdAt: index }),
+    )
+
+    expect(() => parseBackup(backup([validItem()], BACKUP_VERSION, { outfits }))).toThrow(
+      `That backup has ${MAX_BACKUP_OUTFITS + 1} looks. The most a backup can hold is ${MAX_BACKUP_OUTFITS}.`,
+    )
+  })
+
+  it('rejects a backup with more wear entries than the cap', () => {
+    const wearEvents = Array.from(
+      { length: MAX_BACKUP_WEAR_EVENTS + 1 },
+      (_, index) => validWearEvent({ id: index + 1, createdAt: index }),
+    )
+
+    expect(() =>
+      parseBackup(backup([validItem()], BACKUP_VERSION, { wearEvents })),
+    ).toThrow(
+      `That backup has ${MAX_BACKUP_WEAR_EVENTS + 1} wear entries. The most a backup can hold is ${MAX_BACKUP_WEAR_EVENTS}.`,
+    )
+  })
+
+  it('rejects a single photo larger than the per-image cap', () => {
+    const oversized = `data:image/png;base64,${'A'.repeat(
+      Math.ceil((MAX_RESTORED_IMAGE_BYTES * 4) / 3) + 100,
+    )}`
+
+    const file = new File([backup([validItem({ image: oversized })])], 'w.json', {
+      type: 'application/json',
+    })
+
+    return expect(importBackup(file)).rejects.toThrow(
+      'The photo for "Olive linen camp shirt" is too large to restore. No pieces were imported.',
+    )
+  })
+})
+
+describe('decodedImageByteLength', () => {
+  it('ignores the data URL header', () => {
+    const body = 'UklGRqg' // 8 base64 chars -> 6 bytes
+    expect(decodedImageByteLength(`data:image/webp;base64,${body}`)).toBe(6)
+  })
+
+  it('grows with the payload', () => {
+    const small = decodedImageByteLength(`data:image/png;base64,${'A'.repeat(40)}`)
+    const large = decodedImageByteLength(`data:image/png;base64,${'A'.repeat(400)}`)
+    expect(large).toBeGreaterThan(small)
+  })
+})
+
+describe('importBackup', () => {
+  beforeEach(async () => {
+    await Promise.all([
+      db.items.clear(),
+      db.outfits.clear(),
+      db.wearEvents.clear(),
+    ])
+  })
+
+  it('imports a normal backup and round-trips it back out', async () => {
+    const payload = backup([validItem()], BACKUP_VERSION, {
+      outfits: [validOutfit()],
+      wearEvents: [validWearEvent()],
+    })
+    const file = new File([payload], 'wardrobe.json', {
+      type: 'application/json',
+    })
+
+    const result = await importBackup(file)
+
+    expect(result.imported).toEqual({ items: 1, outfits: 1, wearEvents: 1 })
+    expect(result.skipped).toBe(0)
+
+    const items = await db.items.toArray()
+    expect(items).toHaveLength(1)
+    expect(items[0].name).toBe('Olive linen camp shirt')
+
+    const outfits = await db.outfits.toArray()
+    expect(outfits).toHaveLength(1)
+    // The look's itemIds are remapped to the freshly assigned item id.
+    expect(outfits[0].itemIds).toEqual([items[0].id])
+
+    const events = await db.wearEvents.toArray()
+    expect(events).toHaveLength(1)
+    expect(events[0].outfitId).toBe(outfits[0].id)
+  })
+
+  it('aborts the whole import and writes nothing when an image is corrupt', async () => {
+    const corrupt = 'data:image/png;base64,@@not really an image@@'
+    const payload = backup([
+      validItem(),
+      validItem({ id: 2, name: 'Broken piece', image: corrupt, createdAt: 2 }),
+    ])
+    const file = new File([payload], 'wardrobe.json', {
+      type: 'application/json',
+    })
+
+    await expect(importBackup(file)).rejects.toThrow(
+      'The photo for "Broken piece" could not be restored. No pieces were imported.',
+    )
+
+    // The transaction must not have left the good item behind.
+    expect(await db.items.toArray()).toEqual([])
+    expect(await db.outfits.toArray()).toEqual([])
+    expect(await db.wearEvents.toArray()).toEqual([])
   })
 })

@@ -1,4 +1,5 @@
 import { db } from '../db'
+import { prepareRestoredImage } from './images'
 import { parsePrice } from './insights'
 import {
   CATEGORY_OPTIONS,
@@ -18,6 +19,12 @@ export const BACKUP_VERSION = 2
 const SUPPORTED_VERSIONS = new Set([1, 2])
 const BACKUP_APP = 'wardrobe'
 const MAX_BACKUP_BYTES = 100 * 1024 * 1024
+/** Hard caps so a crafted backup cannot exhaust memory or the database. */
+export const MAX_BACKUP_ITEMS = 5000
+export const MAX_BACKUP_OUTFITS = 1000
+export const MAX_BACKUP_WEAR_EVENTS = 20000
+/** A single restored photo larger than this is rejected before decoding. */
+export const MAX_RESTORED_IMAGE_BYTES = 20 * 1024 * 1024
 
 const CATEGORY_VALUES = new Set<string>(
   CATEGORY_OPTIONS.map((option) => option.value),
@@ -160,6 +167,18 @@ function itemKey(item: Pick<BackupItem, 'name' | 'createdAt'>): string {
   return `${item.name}\u0000${item.createdAt}`
 }
 
+/**
+ * Approximate decoded byte size of a `data:` URL before decoding it, so an
+ * oversized photo is rejected without allocating the full buffer. base64
+ * stores 3 bytes in 4 characters, ignoring the `data:...;base64,` prefix.
+ * Rounds up so an unpadded payload is not underestimated.
+ */
+export function decodedImageByteLength(dataUrl: string): number {
+  const comma = dataUrl.indexOf(',')
+  const payload = comma === -1 ? dataUrl : dataUrl.slice(comma + 1)
+  return Math.ceil((payload.length * 3) / 4)
+}
+
 function parseBackupItem(value: unknown): BackupItem | null {
   if (!isRecord(value)) return null
 
@@ -277,6 +296,27 @@ export function parseBackup(text: string): ParsedBackup {
 
   if (!Array.isArray(data.items)) {
     throw new Error('That backup has no items.')
+  }
+
+  if (data.items.length > MAX_BACKUP_ITEMS) {
+    throw new Error(
+      `That backup has ${data.items.length} pieces. The most a backup can hold is ${MAX_BACKUP_ITEMS}.`,
+    )
+  }
+
+  if (Array.isArray(data.outfits) && data.outfits.length > MAX_BACKUP_OUTFITS) {
+    throw new Error(
+      `That backup has ${data.outfits.length} looks. The most a backup can hold is ${MAX_BACKUP_OUTFITS}.`,
+    )
+  }
+
+  if (
+    Array.isArray(data.wearEvents) &&
+    data.wearEvents.length > MAX_BACKUP_WEAR_EVENTS
+  ) {
+    throw new Error(
+      `That backup has ${data.wearEvents.length} wear entries. The most a backup can hold is ${MAX_BACKUP_WEAR_EVENTS}.`,
+    )
   }
 
   const items: BackupItem[] = []
@@ -433,11 +473,23 @@ export async function importBackup(file: File): Promise<ImportResult> {
       continue
     }
 
+    if (decodedImageByteLength(item.image) > MAX_RESTORED_IMAGE_BYTES) {
+      throw new Error(
+        `The photo for "${item.name}" is too large to restore. No pieces were imported.`,
+      )
+    }
+
     try {
-      preparedItems.push({ backup: item, image: await dataUrlToBlob(item.image) })
+      const blob = await dataUrlToBlob(item.image)
+      preparedItems.push({
+        backup: item,
+        image: await prepareRestoredImage(blob),
+      })
       seenItemKeys.add(key)
     } catch {
-      skipped += 1
+      throw new Error(
+        `The photo for "${item.name}" could not be restored. No pieces were imported.`,
+      )
     }
   }
 
