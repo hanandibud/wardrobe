@@ -2,7 +2,7 @@
 
 A local-first virtual wardrobe. Add a garment with one photo, let the app pull its main colors, and build a closet you can actually use. The long-term goal is a daily outfit suggestion based on the weather, the occasion, and what is clean.
 
-> **Status: M4 in progress.** Add, edit, crop, cut out, and back up a local wardrobe, build and save looks from it, keep a wear log, check today's weather, and get daily outfit suggestions tuned by your color palette. See what each piece costs per wear and which wardrobe gaps are worth filling. Install it to your home screen and reopen it offline. Everything personal stays in your browser — no account, no backend, no paid API.
+> **Status: M4 in progress.** Add, edit, crop, cut out, and back up a local wardrobe, build and save looks from it, keep a wear log, check today's weather, and get daily outfit suggestions. See what each piece costs per wear and which wardrobe gaps are worth filling. Install it to your home screen and reopen it offline. Everything personal stays in your browser — no account, no backend, no paid API.
 
 **Live:** https://hanandibud.github.io/wardrobe/
 
@@ -30,7 +30,6 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 - Press “Wear this” to save the look and log the wear in one step
 - Skip a pick for the rest of the day
 - Love a wear in the log so pieces from that look rise in later picks
-- Set loved and avoided colors, an undertone, and a contrast preference; picks use them as small tie-breakers
 - Record what a piece cost and see the cost per wear across your logged wears
 - See the wardrobe gaps worth noticing: a base, a formal option, warmth at both ends, shoes, and a neutral
 - Install the app to your home screen and open it offline
@@ -49,8 +48,6 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 ![Edit a piece](screenshots/edit-item.png)
 
 ![Cost per wear and wardrobe gaps](screenshots/insights-panel.png)
-
-![Color palette and undertone preferences](screenshots/palette-panel.png)
 
 ![Back up and restore](screenshots/backup-panel.png)
 
@@ -153,7 +150,6 @@ src/
     CropDialog.tsx        crop frame with drag and resize handles
     BackupPanel.tsx       export/import controls and status
     InsightsPanel.tsx     cost per wear and wardrobe gap insights
-    PalettePanel.tsx      palette, undertone, and contrast preferences
     StorageStatus.tsx     storage usage meter and persistence request
     AddItemView.tsx       add page shell
   hooks/
@@ -166,7 +162,6 @@ src/
     images.ts             image validation and WebP compression
     insights.ts           price parsing, cost per wear, wardrobe gaps
     outfits.ts            selection toggling, category groups, item resolution
-    preferences.ts        palette storage, color matching, tone, contrast
     recommend.ts          hard filters, combos, scoring, reasons, skips
     storage.ts            storage estimate, persistence, quota detection
     wear.ts               local dates, wear labels, history join
@@ -188,7 +183,6 @@ screenshots/              documentation screenshots
 - Photos are never uploaded. Background removal runs locally; only the model file is downloaded.
 - The weather request sends only rounded coordinates to Open-Meteo, a keyless free service. The chosen place and last reading stay in `localStorage`. When you search for a city, the place name you type is sent to Open-Meteo's geocoder to find matching coordinates.
 - Skipped picks for the current day are kept in `localStorage` too; they never leave the browser.
-- Color preferences are stored in `localStorage` on this device. They are not part of a backup and are never sent anywhere.
 - The service worker caches the app shell (HTML, JavaScript, CSS, icons) in the browser’s Cache Storage. It never caches photos, API responses, or the cutout model.
 - IndexedDB is per browser and per device. Clearing site data deletes the wardrobe unless you keep a backup. Export/import is built in.
 - Backup files contain your photos. Treat them like personal documents and do not commit or share them.
