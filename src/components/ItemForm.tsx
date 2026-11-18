@@ -334,7 +334,7 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="rounded-full bg-card/90 px-3.5 py-2 text-xs font-medium text-ink shadow-sm backdrop-blur transition hover:bg-card"
+                    className="rounded-full bg-card/90 px-3.5 py-2 text-xs font-medium text-ink shadow-sm backdrop-blur transition hover:bg-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
                     {isEditing ? 'Replace photo' : 'Change photo'}
                   </button>
@@ -343,7 +343,7 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
                       type="button"
                       onClick={startCropCurrent}
                       aria-label="Crop photo"
-                      className="inline-flex items-center gap-1.5 rounded-full bg-card/90 px-3.5 py-2 text-xs font-medium text-ink shadow-sm backdrop-blur transition hover:bg-card"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-card/90 px-3.5 py-2 text-xs font-medium text-ink shadow-sm backdrop-blur transition hover:bg-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                     >
                       <Crop className="h-3.5 w-3.5" />
                       Crop
@@ -352,7 +352,7 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
                       <button
                         type="button"
                         onClick={clearPhoto}
-                        className="rounded-full bg-card/90 px-3.5 py-2 text-xs font-medium text-muted shadow-sm backdrop-blur transition hover:bg-card hover:text-ink"
+                        className="rounded-full bg-card/90 px-3.5 py-2 text-xs font-medium text-muted shadow-sm backdrop-blur transition hover:bg-card hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                       >
                         Remove
                       </button>
@@ -521,7 +521,7 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
                   type="button"
                   onClick={() => removeColor(color)}
                   aria-label={`Remove ${nameColor(color)}`}
-                  className="rounded-full p-0.5 text-muted transition hover:bg-black/5 hover:text-ink"
+                  className="rounded-full p-0.5 text-muted transition hover:bg-black/5 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -719,7 +719,7 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
                 type="button"
                 onClick={onCancel}
                 disabled={saving}
-                className="rounded-full border border-line px-4 py-2.5 text-xs font-medium text-ink transition hover:border-ink/30 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-full border border-line px-4 py-2.5 text-xs font-medium text-ink transition hover:border-ink/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Cancel
               </button>

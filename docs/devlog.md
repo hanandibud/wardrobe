@@ -2,6 +2,15 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-18 — M4: an accessibility pass on the controls already there
+
+- Added a global `:focus-visible` rule in `src/index.css` so every control shows a 2 px accent ring on keyboard focus. Native inputs (search, text fields, the custom color pickers, the file input) previously had no visible indicator when tabbed to, because Tailwind's `focus:` ring styles only the mouse-focus state. A base rule guarantees an indicator everywhere without touching each control.
+- Brought the secondary buttons that had missed a ring up to the same standard as their primary siblings: the cancel and confirm actions in both delete confirmations, the rename cancel in the outfit dialog, the crop dialog's cancel, the photo overlay actions in the add/edit form, the weather panel's change/search/back buttons, and the outfit builder's back button.
+- The toast is now an explicit `aria-live="polite"` region alongside its `role="status"`, so a message re-rendered in place is still announced.
+- No behavior, data, or layout changed; the fixes are styling and attributes only, so the suite stays at 192. The focus ring was verified in the browser with a real keyboard-focus check: a color input reports `matches(':focus-visible')` true and a solid 2 px accent outline.
+
+**Next:** M4 final slice — a demo GIF and refreshed screenshots.
+
 ## 2026-11-18 — M4: what each piece costs to keep in rotation
 
 - Added `src/lib/insights.ts` and `src/components/InsightsPanel.tsx`. The panel sits on the wardrobe page and shows the value of the priced pieces, the average cost per wear across logged wears, the pieces costing the most per wear, and the gaps a small wardrobe tends to have.

@@ -288,7 +288,7 @@ export function WeatherPanel({ onSnapshotChange }: WeatherPanelProps) {
                 void loadWeather(place, true)
               }}
               disabled={loading}
-              className="inline-flex items-center gap-1.5 rounded-full border border-line bg-card px-3 py-2 text-[11px] font-medium text-ink transition hover:border-ink/30 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 rounded-full border border-line bg-card px-3 py-2 text-[11px] font-medium text-ink transition hover:border-ink/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? (
                 <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
@@ -306,7 +306,7 @@ export function WeatherPanel({ onSnapshotChange }: WeatherPanelProps) {
               setSearchError(null)
             }}
             aria-expanded={searchOpen}
-            className="inline-flex items-center gap-1.5 rounded-full border border-line bg-card px-3 py-2 text-[11px] font-medium text-ink transition hover:border-ink/30"
+            className="inline-flex items-center gap-1.5 rounded-full border border-line bg-card px-3 py-2 text-[11px] font-medium text-ink transition hover:border-ink/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             {searchOpen ? (
               <X className="h-3.5 w-3.5" />
@@ -342,7 +342,7 @@ export function WeatherPanel({ onSnapshotChange }: WeatherPanelProps) {
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              className="inline-flex items-center gap-2 rounded-full border border-line bg-card px-4 py-2.5 text-xs font-medium text-ink transition hover:border-ink/30"
+              className="inline-flex items-center gap-2 rounded-full border border-line bg-card px-4 py-2.5 text-xs font-medium text-ink transition hover:border-ink/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               <Search className="h-3.5 w-3.5" />
               Search a city

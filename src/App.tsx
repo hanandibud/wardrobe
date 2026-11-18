@@ -135,6 +135,7 @@ function App() {
       {toast && (
         <div
           role="status"
+          aria-live="polite"
           className="fixed inset-x-4 bottom-5 z-[60] mx-auto flex max-w-sm items-center gap-2 rounded-full bg-ink px-4 py-3 text-sm text-paper shadow-xl animate-rise"
         >
           <Check className="h-4 w-4 shrink-0" />

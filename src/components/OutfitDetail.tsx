@@ -355,7 +355,7 @@ export function OutfitDetail({
                 <button
                   type="button"
                   onClick={cancelRenaming}
-                  className="rounded-full border border-line bg-card px-4 py-2.5 text-xs font-medium text-ink transition hover:border-ink/30"
+                  className="rounded-full border border-line bg-card px-4 py-2.5 text-xs font-medium text-ink transition hover:border-ink/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   Cancel
                 </button>
@@ -380,7 +380,7 @@ export function OutfitDetail({
                   type="button"
                   onClick={handleDelete}
                   disabled={deleting}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-red-700 px-3.5 py-2 text-xs font-medium text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-red-700 px-3.5 py-2 text-xs font-medium text-white transition hover:bg-red-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {deleting && <LoaderCircle className="h-3.5 w-3.5 animate-spin" />}
                   {deleting ? 'Removing...' : 'Yes, remove'}
@@ -388,7 +388,7 @@ export function OutfitDetail({
                 <button
                   type="button"
                   onClick={() => setConfirmingDelete(false)}
-                  className="rounded-full border border-line px-3.5 py-2 text-xs font-medium text-ink transition hover:border-ink/30"
+                  className="rounded-full border border-line px-3.5 py-2 text-xs font-medium text-ink transition hover:border-ink/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   Cancel
                 </button>

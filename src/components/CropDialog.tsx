@@ -363,7 +363,7 @@ export function CropDialog({
               type="button"
               onClick={onCancel}
               disabled={busy}
-              className="rounded-full border border-line px-4 py-2.5 text-xs font-medium text-ink transition hover:border-ink/30 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-full border border-line px-4 py-2.5 text-xs font-medium text-ink transition hover:border-ink/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
             >
               Cancel
             </button>

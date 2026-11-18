@@ -74,7 +74,7 @@ export function WearHistoryView({ items, onSeeOutfits }: WearHistoryViewProps) {
           <button
             type="button"
             onClick={onSeeOutfits}
-            className="inline-flex w-fit items-center gap-2 rounded-full border border-line bg-card px-4 py-2.5 text-xs font-medium text-ink transition hover:border-ink/30"
+            className="inline-flex w-fit items-center gap-2 rounded-full border border-line bg-card px-4 py-2.5 text-xs font-medium text-ink transition hover:border-ink/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             View outfits
             <ArrowRight className="h-3.5 w-3.5" />

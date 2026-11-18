@@ -293,14 +293,14 @@ export function ItemDetail({
                   <button
                     type="button"
                     onClick={onDelete}
-                    className="rounded-full bg-red-700 px-3.5 py-2 text-xs font-medium text-white transition hover:bg-red-800"
+                    className="rounded-full bg-red-700 px-3.5 py-2 text-xs font-medium text-white transition hover:bg-red-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
                     Yes, remove
                   </button>
                   <button
                     type="button"
                     onClick={() => setConfirmingDelete(false)}
-                    className="rounded-full border border-line px-3.5 py-2 text-xs font-medium text-ink transition hover:border-ink/30"
+                    className="rounded-full border border-line px-3.5 py-2 text-xs font-medium text-ink transition hover:border-ink/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
                     Cancel
                   </button>
