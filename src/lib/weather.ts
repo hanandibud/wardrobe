@@ -298,11 +298,9 @@ export function readCachedWeather(place: Place): WeatherSnapshot | null {
   const cached = readJson<WeatherCache>(CACHE_KEY)
   if (!cached || !isPlace(cached.place)) return null
 
-  const samePlace =
-    Math.abs(cached.place.latitude - place.latitude) < 0.0001 &&
-    Math.abs(cached.place.longitude - place.longitude) < 0.0001
-
-  return samePlace && cached.snapshot ? cached.snapshot : null
+  return samePlace(cached.place, place) && cached.snapshot
+    ? cached.snapshot
+    : null
 }
 
 export function writeCachedWeather(
@@ -310,4 +308,33 @@ export function writeCachedWeather(
   snapshot: WeatherSnapshot,
 ): void {
   writeJson(CACHE_KEY, { place, snapshot })
+}
+
+/** Two places are the same when they round to the same spot on the map. */
+export function samePlace(a: Place, b: Place): boolean {
+  return (
+    Math.abs(a.latitude - b.latitude) < 0.0001 &&
+    Math.abs(a.longitude - b.longitude) < 0.0001
+  )
+}
+
+/**
+ * The decision `loadWeather` makes before it reaches the network: a cached
+ * reading for this exact place that is still fresh means nothing to fetch.
+ * Kept pure so the cache rule and the request-race guard can be tested
+ * without React or a network call.
+ */
+export function resolveWeatherSource(
+  target: Place,
+  force: boolean,
+  now: number,
+): { cached: WeatherSnapshot | null; shouldFetch: boolean } {
+  const cached = readCachedWeather(target)
+  const fresh = cached !== null && isCacheFresh(cached.fetchedAt, now)
+
+  if (!force && fresh) {
+    return { cached, shouldFetch: false }
+  }
+
+  return { cached, shouldFetch: true }
 }

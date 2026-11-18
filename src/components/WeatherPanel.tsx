@@ -1,261 +1,53 @@
 import {
   Check,
-  Cloud,
-  CloudDrizzle,
-  CloudFog,
-  CloudLightning,
-  CloudMoon,
-  CloudRain,
-  CloudSnow,
-  CloudSun,
   Droplets,
   LoaderCircle,
   MapPin,
   Navigation,
   RefreshCw,
   Search,
-  Sun,
   Wind,
   X,
 } from 'lucide-react'
+import { useWeather } from '../hooks/useWeather'
 import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type FormEvent,
-} from 'react'
-import {
-  fetchWeather,
   formatUpdatedAt,
-  isCacheFresh,
   isWetCondition,
-  readCachedWeather,
-  readSavedPlace,
-  savePlace,
-  searchPlaces,
-  weatherBand,
-  writeCachedWeather,
+  samePlace,
   WEATHER_BAND_LABELS,
-  type Place,
-  type PlaceResult,
-  type WeatherCondition,
   type WeatherSnapshot,
 } from '../lib/weather'
-
-function WeatherGlyph({
-  condition,
-  isDay,
-  className,
-}: {
-  condition: WeatherCondition
-  isDay: boolean
-  className?: string
-}) {
-  if (condition === 'clear') {
-    return isDay ? (
-      <Sun className={className} strokeWidth={1.5} />
-    ) : (
-      <CloudMoon className={className} strokeWidth={1.5} />
-    )
-  }
-
-  if (condition === 'cloudy') {
-    return isDay ? (
-      <CloudSun className={className} strokeWidth={1.5} />
-    ) : (
-      <Cloud className={className} strokeWidth={1.5} />
-    )
-  }
-
-  if (condition === 'fog') {
-    return <CloudFog className={className} strokeWidth={1.5} />
-  }
-
-  if (condition === 'drizzle') {
-    return <CloudDrizzle className={className} strokeWidth={1.5} />
-  }
-
-  if (condition === 'rain') {
-    return <CloudRain className={className} strokeWidth={1.5} />
-  }
-
-  if (condition === 'snow') {
-    return <CloudSnow className={className} strokeWidth={1.5} />
-  }
-
-  return <CloudLightning className={className} strokeWidth={1.5} />
-}
-
-const bandClass: Record<ReturnType<typeof weatherBand>, string> = {
-  cold: 'border-forest/25 bg-forest/10 text-forest',
-  cool: 'border-forest/25 bg-forest/10 text-forest',
-  mild: 'border-accent/25 bg-accent-soft text-accent',
-  warm: 'border-accent/25 bg-accent-soft text-accent',
-  hot: 'border-accent/25 bg-accent-soft text-accent',
-}
-
-function samePlace(a: Place, b: PlaceResult): boolean {
-  return (
-    Math.abs(a.latitude - b.latitude) < 0.0001 &&
-    Math.abs(a.longitude - b.longitude) < 0.0001
-  )
-}
+import { bandClass, WeatherGlyph } from './WeatherGlyph'
 
 interface WeatherPanelProps {
   onSnapshotChange?: (snapshot: WeatherSnapshot | null) => void
 }
 
 export function WeatherPanel({ onSnapshotChange }: WeatherPanelProps) {
-  const [place, setPlace] = useState<Place | null>(() => readSavedPlace())
-  const [snapshot, setSnapshot] = useState<WeatherSnapshot | null>(() => {
-    const saved = readSavedPlace()
-    return saved ? readCachedWeather(saved) : null
-  })
-  const [now, setNow] = useState(() => Date.now())
-  const [loading, setLoading] = useState(() => {
-    const saved = readSavedPlace()
-    const cached = saved ? readCachedWeather(saved) : null
-    return saved !== null && !(cached && isCacheFresh(cached.fetchedAt, Date.now()))
-  })
-  const [error, setError] = useState<string | null>(null)
-  const [locating, setLocating] = useState(false)
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState<PlaceResult[]>([])
-  const [searching, setSearching] = useState(false)
-  const [searchError, setSearchError] = useState<string | null>(null)
-  const requestId = useRef(0)
-
-  const loadWeather = useCallback(
-    async (target: Place, force: boolean) => {
-      const currentRequest = ++requestId.current
-      const cached = readCachedWeather(target)
-
-      if (!force && cached && isCacheFresh(cached.fetchedAt, Date.now())) {
-        setSnapshot(cached)
-        setNow(Date.now())
-        setError(null)
-        setLoading(false)
-        onSnapshotChange?.(cached)
-        return
-      }
-
-      setLoading(true)
-      setError(null)
-
-      try {
-        const fresh = await fetchWeather(target)
-        if (requestId.current !== currentRequest) return
-
-        writeCachedWeather(target, fresh)
-        setSnapshot(fresh)
-        setNow(Date.now())
-        onSnapshotChange?.(fresh)
-      } catch {
-        if (requestId.current !== currentRequest) return
-
-        if (cached) {
-          setSnapshot(cached)
-          setNow(Date.now())
-          onSnapshotChange?.(cached)
-          setError(
-            'Showing the last reading — the weather service could not be reached.',
-          )
-        } else {
-          onSnapshotChange?.(null)
-          setError(
-            'Could not reach the weather service. Check your connection and try again.',
-          )
-        }
-      } finally {
-        if (requestId.current === currentRequest) setLoading(false)
-      }
+  const {
+    place,
+    snapshot,
+    band,
+    loading,
+    now,
+    locating,
+    searchOpen,
+    query,
+    results,
+    searching,
+    error,
+    searchError,
+    actions: {
+      refresh,
+      choosePlace,
+      useMyLocation,
+      search,
+      openSearch,
+      toggleSearch,
+      clearSearchError,
+      setQuery,
     },
-    [onSnapshotChange],
-  )
-
-  useEffect(() => {
-    if (!place) return
-    // Fetching is this effect's whole job; a fresh cache entry short-circuits it.
-    // oxlint-disable-next-line react/set-state-in-effect
-    void loadWeather(place, false)
-  }, [place, loadWeather])
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 60_000)
-    return () => window.clearInterval(timer)
-  }, [])
-
-  function choosePlace(next: Place) {
-    const cached = readCachedWeather(next)
-    savePlace(next)
-    setSnapshot(cached)
-    setPlace(next)
-    setSearchOpen(false)
-    setQuery('')
-    setResults([])
-    setSearchError(null)
-    onSnapshotChange?.(cached)
-  }
-
-  function useMyLocation() {
-    if (locating) return
-
-    setSearchOpen(false)
-
-    if (!('geolocation' in navigator)) {
-      setError('This browser cannot share a location. Search for a city instead.')
-      return
-    }
-
-    setLocating(true)
-    setError(null)
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocating(false)
-        choosePlace({
-          latitude: Number(position.coords.latitude.toFixed(3)),
-          longitude: Number(position.coords.longitude.toFixed(3)),
-          label: 'My location',
-        })
-      },
-      () => {
-        setLocating(false)
-        setError('Location was unavailable. Search for a city instead.')
-      },
-      { timeout: 10_000, maximumAge: 10 * 60 * 1000 },
-    )
-  }
-
-  async function handleSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (searching) return
-
-    const trimmed = query.trim()
-    if (trimmed.length < 2) {
-      setSearchError('Type at least two letters of a city name.')
-      return
-    }
-
-    setSearching(true)
-    setSearchError(null)
-
-    try {
-      const found = await searchPlaces(trimmed)
-      setResults(found)
-      if (found.length === 0) {
-        setSearchError('No places matched. Try a nearby city.')
-      }
-    } catch {
-      setSearchError('Could not search places. Check your connection.')
-    } finally {
-      setSearching(false)
-    }
-  }
-
-  const band = snapshot ? weatherBand(snapshot.feelsLike) : null
+  } = useWeather(onSnapshotChange)
 
   return (
     <section
@@ -284,9 +76,7 @@ export function WeatherPanel({ onSnapshotChange }: WeatherPanelProps) {
           {place && (
             <button
               type="button"
-              onClick={() => {
-                void loadWeather(place, true)
-              }}
+              onClick={refresh}
               disabled={loading}
               className="inline-flex items-center gap-1.5 rounded-full border border-line bg-card px-3 py-2 text-[11px] font-medium text-ink transition hover:border-ink/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -301,10 +91,7 @@ export function WeatherPanel({ onSnapshotChange }: WeatherPanelProps) {
 
           <button
             type="button"
-            onClick={() => {
-              setSearchOpen((open) => !open)
-              setSearchError(null)
-            }}
+            onClick={toggleSearch}
             aria-expanded={searchOpen}
             className="inline-flex items-center gap-1.5 rounded-full border border-line bg-card px-3 py-2 text-[11px] font-medium text-ink transition hover:border-ink/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
@@ -341,7 +128,7 @@ export function WeatherPanel({ onSnapshotChange }: WeatherPanelProps) {
             </button>
             <button
               type="button"
-              onClick={() => setSearchOpen(true)}
+              onClick={openSearch}
               className="inline-flex items-center gap-2 rounded-full border border-line bg-card px-4 py-2.5 text-xs font-medium text-ink transition hover:border-ink/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               <Search className="h-3.5 w-3.5" />
@@ -433,7 +220,7 @@ export function WeatherPanel({ onSnapshotChange }: WeatherPanelProps) {
 
       {searchOpen && (
         <div className="border-t border-line/70 bg-paper/40 px-5 py-4">
-          <form onSubmit={handleSearch} className="flex gap-2">
+          <form onSubmit={search} className="flex gap-2">
             <label htmlFor="place-search" className="sr-only">
               Search for a city
             </label>
@@ -443,7 +230,7 @@ export function WeatherPanel({ onSnapshotChange }: WeatherPanelProps) {
               value={query}
               onChange={(event) => {
                 setQuery(event.target.value)
-                setSearchError(null)
+                clearSearchError()
               }}
               placeholder="City name"
               autoComplete="off"

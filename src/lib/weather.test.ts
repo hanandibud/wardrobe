@@ -8,6 +8,8 @@ import {
   parseWeatherPayload,
   readCachedWeather,
   readSavedPlace,
+  resolveWeatherSource,
+  samePlace,
   savePlace,
   weatherBand,
   writeCachedWeather,
@@ -312,5 +314,97 @@ describe('place and weather cache', () => {
   it('returns nothing when storage is unavailable', () => {
     expect(readCachedWeather(place)).toBeNull()
     expect(readSavedPlace()).toBeNull()
+  })
+})
+
+describe('samePlace', () => {
+  const bandung = { latitude: -6.9, longitude: 107.6, label: 'Bandung' }
+
+  it('treats the same coordinates as the same place', () => {
+    expect(samePlace(bandung, { ...bandung, label: 'Renamed' })).toBe(true)
+  })
+
+  it('treats a rounding-level difference as the same place', () => {
+    const nearby = { latitude: -6.90005, longitude: 107.60005, label: 'Bandung' }
+    expect(samePlace(bandung, nearby)).toBe(true)
+  })
+
+  it('treats a real move as a different place', () => {
+    const london = { latitude: 51.5, longitude: -0.1, label: 'London' }
+    expect(samePlace(bandung, london)).toBe(false)
+  })
+})
+
+describe('resolveWeatherSource', () => {
+  const place = { latitude: -6.9, longitude: 107.6, label: 'Bandung' }
+  const snapshot: WeatherSnapshot = {
+    temperature: 24,
+    feelsLike: 25,
+    precipitation: 0,
+    windSpeed: 6,
+    code: 1,
+    condition: 'clear',
+    label: 'Mainly clear',
+    isDay: true,
+    fetchedAt: 1000,
+    placeLabel: 'Bandung',
+  }
+
+  function freshSnapshot(): WeatherSnapshot {
+    return { ...snapshot, fetchedAt: 1_000_000 }
+  }
+
+  it('returns a fresh cache hit and no fetch', () => {
+    vi.stubGlobal('window', { localStorage: memoryStorage() })
+    writeCachedWeather(place, freshSnapshot())
+
+    const now = 1_000_000 + WEATHER_CACHE_TTL_MS - 1
+    const result = resolveWeatherSource(place, false, now)
+
+    expect(result.shouldFetch).toBe(false)
+    expect(result.cached).toEqual(freshSnapshot())
+  })
+
+  it('fetches when the cached reading is stale', () => {
+    vi.stubGlobal('window', { localStorage: memoryStorage() })
+    writeCachedWeather(place, freshSnapshot())
+
+    const now = 1_000_000 + WEATHER_CACHE_TTL_MS
+    const result = resolveWeatherSource(place, false, now)
+
+    expect(result.shouldFetch).toBe(true)
+    expect(result.cached).toEqual(freshSnapshot())
+  })
+
+  it('fetches when forced even with a fresh cache', () => {
+    vi.stubGlobal('window', { localStorage: memoryStorage() })
+    writeCachedWeather(place, freshSnapshot())
+
+    const now = 1_000_000 + WEATHER_CACHE_TTL_MS - 1
+    const result = resolveWeatherSource(place, true, now)
+
+    expect(result.shouldFetch).toBe(true)
+    // The cached reading is still returned, so an error can fall back to it.
+    expect(result.cached).toEqual(freshSnapshot())
+  })
+
+  it('fetches when there is no cache, with no fallback', () => {
+    vi.stubGlobal('window', { localStorage: memoryStorage() })
+
+    const result = resolveWeatherSource(place, false, Date.now())
+
+    expect(result.shouldFetch).toBe(true)
+    expect(result.cached).toBeNull()
+  })
+
+  it('does not reuse another place’s cache', () => {
+    vi.stubGlobal('window', { localStorage: memoryStorage() })
+    writeCachedWeather(place, freshSnapshot())
+
+    const london = { latitude: 51.5, longitude: -0.1, label: 'London' }
+    const result = resolveWeatherSource(london, false, 1_000_000 + 1)
+
+    expect(result.shouldFetch).toBe(true)
+    expect(result.cached).toBeNull()
   })
 })
