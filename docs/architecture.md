@@ -211,9 +211,11 @@ A shared decorative thumbnail for outfit collages and summary strips. It creates
 
 ### `src/lib/backup.ts`
 
-A backup is one JSON file with the full item list and each photo embedded as a data URL. `downloadBackup` reads the items in `createdAt` order, converts every Blob, and triggers a browser download. `importBackup` parses and validates the file, converts the images back to Blobs, and bulk-adds them in one transaction.
+A backup is one versioned JSON file with the full catalogue: pieces with each photo embedded as a data URL, saved looks, and wear events. `downloadBackup` reads items and looks in `createdAt` order — wear rows are sorted in memory because `createdAt` is not indexed on that table — converts every Blob, and triggers a browser download.
 
-Import is additive and idempotent: an item is skipped when its `name` + `createdAt` key already exists, so importing the same file twice does not duplicate the wardrobe. Malformed top-level files fail with a readable message; individual malformed items are skipped and counted. Photos make backups personal data, so the UI warns the user to keep the file safe.
+`importBackup` validates the file, then treats it as a graph rather than a flat list. Items are matched by `name` + `createdAt`; a duplicate maps the backup id to the existing row. New items are inserted first, then looks are rebuilt with their `itemIds` remapped through that map, then wear events attach through a second look-id map. Missing pieces are dropped from a look, and a wear whose look cannot be mapped is skipped. The database assigns fresh ids; ids in the file are only mapping keys.
+
+Import is additive and idempotent across all three tables: a piece duplicates by `name` + `createdAt`, a look by the same pair, and a wear by remapped look + `wornOn`. Re-importing a file is a no-op. Version 1 backups still import as pieces; a backup from a newer version is rejected with a readable message. Malformed rows are skipped and counted, and the panel reports pieces, looks, and wear entries on both export and import. Photos make backups personal data, so the UI warns the user to keep the file safe.
 
 ### `src/lib/storage.ts`
 
@@ -244,7 +246,7 @@ The canvas work is a thin wrapper: `paletteFromImage` takes a raw RGBA buffer an
 - `colors.test.ts` — color naming, and palette extraction from a hand-built RGBA buffer.
 - `crop.test.ts` — fit, default frame, clamping, and corner resizing, including ratio and bounds.
 - `images.test.ts` — the accepted types and the 20 MB limit.
-- `backup.test.ts` — version checks, broken files, skipped items, and field filtering.
+- `backup.test.ts` — version checks including v1 compatibility, broken files, skipped items, looks, and wear entries, and field filtering.
 - `storage.test.ts` — byte formatting and quota-error detection.
 - `cutout.test.ts` — progress-key wording and the retry memo key for the cutout config.
 - `outfits.test.ts` — toggling without duplicates, category grouping, resolving deleted items, and the piece count copy.

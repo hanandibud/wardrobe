@@ -1,6 +1,10 @@
 import { Archive, Download, LoaderCircle, Upload } from 'lucide-react'
 import { useRef, useState, type ChangeEvent } from 'react'
-import { downloadBackup, importBackup } from '../lib/backup'
+import {
+  downloadBackup,
+  importBackup,
+  type BackupCounts,
+} from '../lib/backup'
 import { isQuotaError } from '../lib/storage'
 import { StorageStatus } from './StorageStatus'
 
@@ -17,6 +21,18 @@ function countLabel(count: number, singular: string, plural: string): string {
   return `${count} ${count === 1 ? singular : plural}`
 }
 
+function countsLabel(counts: BackupCounts): string {
+  const parts: string[] = []
+
+  if (counts.items > 0) parts.push(countLabel(counts.items, 'piece', 'pieces'))
+  if (counts.outfits > 0) parts.push(countLabel(counts.outfits, 'look', 'looks'))
+  if (counts.wearEvents > 0) {
+    parts.push(countLabel(counts.wearEvents, 'wear entry', 'wear entries'))
+  }
+
+  return parts.join(', ')
+}
+
 export function BackupPanel({ itemCount }: BackupPanelProps) {
   const [busy, setBusy] = useState<'export' | 'import' | null>(null)
   const [status, setStatus] = useState<Status | null>(null)
@@ -29,10 +45,10 @@ export function BackupPanel({ itemCount }: BackupPanelProps) {
     setStatus(null)
 
     try {
-      const count = await downloadBackup()
+      const counts = await downloadBackup()
       setStatus({
         tone: 'success',
-        message: `Backed up ${countLabel(count, 'piece', 'pieces')}. Keep the file somewhere safe.`,
+        message: `Backed up ${countsLabel(counts)}. Keep the file somewhere safe.`,
       })
     } catch {
       setStatus({
@@ -54,23 +70,27 @@ export function BackupPanel({ itemCount }: BackupPanelProps) {
 
     try {
       const result = await importBackup(file)
+      const imported = countsLabel(result.imported)
+      const duplicateCounts = countsLabel(result.duplicates)
       const details: string[] = []
 
-      if (result.duplicates > 0) {
-        details.push(`${countLabel(result.duplicates, 'piece', 'pieces')} already here`)
+      if (duplicateCounts) {
+        details.push(`${duplicateCounts} already here`)
       }
       if (result.skipped > 0) {
-        details.push(`${countLabel(result.skipped, 'piece was', 'pieces were')} skipped`)
+        details.push(
+          `${countLabel(result.skipped, 'entry was', 'entries were')} skipped`,
+        )
       }
 
-      if (result.imported > 0) {
+      if (imported) {
         setStatus({
           tone: 'success',
-          message: `Imported ${countLabel(result.imported, 'piece', 'pieces')}${
+          message: `Imported ${imported}${
             details.length > 0 ? ` (${details.join(', ')})` : ''
           }.`,
         })
-      } else if (result.duplicates > 0 && result.skipped === 0) {
+      } else if (duplicateCounts && result.skipped === 0) {
         setStatus({
           tone: 'success',
           message: 'Everything in that backup is already here.',
@@ -78,7 +98,7 @@ export function BackupPanel({ itemCount }: BackupPanelProps) {
       } else {
         setStatus({
           tone: 'error',
-          message: `No pieces were imported${details.length > 0 ? `: ${details.join(', ')}` : '.'}`,
+          message: `No entries were imported${details.length > 0 ? `: ${details.join(', ')}` : '.'}`,
         })
       }
     } catch (error) {
@@ -116,9 +136,9 @@ export function BackupPanel({ itemCount }: BackupPanelProps) {
               Keep a copy of your wardrobe
             </h2>
             <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
-              Export every piece and photo as one JSON file. Import it on another
-              device or after clearing browser data. Importing keeps the pieces you
-              already have.
+              Export every piece, look, and wear entry, with photos, as one JSON
+              file. Import it on another device or after clearing browser data.
+              Importing keeps the pieces, looks, and logs you already have.
             </p>
           </div>
         </div>

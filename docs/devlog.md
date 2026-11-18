@@ -2,6 +2,19 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-18 — M4: a backup that includes the looks and the log
+
+- Bumped the backup format to v2. It now carries saved looks and wear events, including `loved`, so a restore is the whole wardrobe rather than just the pieces.
+- Import treats the file as a graph: pieces are inserted or matched first, then outfit `itemIds` are remapped to the new ids, then wear rows attach through a second map. Ids in the file are mapping keys only; the database still assigns its own.
+- Version 1 files still import as pieces. The parser rejects newer versions and skips malformed looks or wear rows instead of failing the whole file.
+- Duplicate detection now spans all three tables: a piece or look by `name` + `createdAt`, and a wear by remapped look + `wornOn`. Importing the same file twice is a no-op.
+- The panel reports what actually moved: “Backed up 3 pieces, 1 look, 1 wear entry,” and an import that hits only duplicates says “Everything in that backup is already here.”
+- Fixed a bug the browser test caught: `wearEvents` has no `createdAt` index, so `orderBy('createdAt')` threw and the export catch showed a generic failure. Wear rows are now sorted in memory; no Dexie bump for an ordering query.
+- Added parser coverage for v2 looks and wears, v1 compatibility, and malformed rows. Suite is 148.
+- Verified in the browser: created a two-piece look, logged and loved it, exported, cleared all three tables, imported, and saw 3 pieces / 1 look / 1 loved wear with remapped ids; re-imported for the duplicate path; and imported a hand-built v1 file that added only its piece. No schema change.
+
+**Next:** M4 slice 3 — editable palette and undertone preferences.
+
 ## 2026-11-18 — M4: install it, then open it offline
 
 - Started M4 with the installable shell, which is the milestone’s acceptance test. No dependency: `public/manifest.webmanifest`, a hand-written `public/sw.js`, and icons generated from the existing hanger silhouette.

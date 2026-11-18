@@ -101,17 +101,18 @@ The service worker keeps the installable shell in Cache Storage under `wardrobe-
 - Activate deletes any cache whose name does not match the current `CACHE_NAME`, so bump that constant when the shell list or fetch strategy changes.
 - The ~24 MB cutout WASM and the downloaded model are not cached; the first cutout still needs the network.
 
-## Backup format (M1)
+## Backup format (v2)
 
-`src/lib/backup.ts` exports one versioned JSON file:
+`src/lib/backup.ts` exports one versioned JSON file with pieces, looks, and wear events:
 
 ```json
 {
   "app": "wardrobe",
-  "version": 1,
-  "exportedAt": "2026-11-17T12:00:00.000Z",
+  "version": 2,
+  "exportedAt": "2026-11-18T12:00:00.000Z",
   "items": [
     {
+      "id": 12,
       "name": "Olive linen camp shirt",
       "category": "top",
       "colors": ["#f6f3ee", "#60704d"],
@@ -123,16 +124,36 @@ The service worker keeps the installable shell in Cache Storage under `wardrobe-
       "image": "data:image/webp;base64,...",
       "createdAt": 1763380800000
     }
+  ],
+  "outfits": [
+    {
+      "id": 3,
+      "name": "Rainy Thursday",
+      "itemIds": [12, 15],
+      "occasion": "work",
+      "seasons": ["autumn"],
+      "createdAt": 1763380900000
+    }
+  ],
+  "wearEvents": [
+    {
+      "id": 8,
+      "outfitId": 3,
+      "wornOn": "2026-11-18",
+      "feedback": "loved",
+      "createdAt": 1763470000000
+    }
   ]
 }
 ```
 
 - Photos are embedded as data URLs so one file restores the wardrobe.
-- Import validates the shape, merges into the current database, and skips an item when its `name` + `createdAt` already exists.
-- Invalid entries are counted and skipped. The import fails only when no valid pieces remain.
-- The file is capped at 100 MB, and the backup version must match the app's current version.
-- Outfits and wear events are not included yet; add them with a version bump when those features ship.
-- A backup contains personal photos. It must never be committed to the repository.
+- `id` values exist only to reconnect records inside the file. Import assigns fresh database ids and remaps `outfit.itemIds` and `wearEvent.outfitId`.
+- Duplicate detection spans all three tables: a piece or look by `name` + `createdAt`, and a wear by remapped look + `wornOn`. Re-importing the same file is a no-op.
+- Version 1 files still import their pieces. The current exporter writes version 2; a newer version is rejected with a readable message.
+- Invalid rows are counted and skipped. The import fails only when no valid pieces remain.
+- The file is capped at 100 MB.
+- A backup contains personal photos and wear history. It must never be committed to the repository.
 
 ## Planned fields
 

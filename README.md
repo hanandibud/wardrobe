@@ -16,8 +16,8 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 - Detect the main colors automatically in CIELAB space
 - Record category, warmth, formality, seasons, availability, and notes
 - Edit any detail of a saved piece, including replacing its photo
-- Export the whole wardrobe, photos included, to one JSON file
-- Import that file on another device or after clearing browser data
+- Export pieces, photos, looks, and the wear log to one JSON file
+- Import it on another device or after clearing browser data; older backups still restore their pieces
 - Browse, search, and filter the wardrobe
 - Build an outfit from pieces you own, with a name, occasion, and seasons
 - Save looks and browse them newest first
@@ -151,7 +151,7 @@ src/
   hooks/
     useObjectUrl.ts       object URL lifecycle for Blob images
   lib/
-    backup.ts             JSON export/import with embedded photos
+    backup.ts             v2 JSON backup: pieces, looks, wear log
     colors.ts             k-means palette extraction + color names
     crop.ts               crop geometry and canvas cropping
     cutout.ts             in-browser background removal wrapper

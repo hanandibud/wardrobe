@@ -68,7 +68,7 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 
 - [x] PWA manifest and service worker
 - [x] GitHub Pages deployment workflow
-- [ ] Export/import polish
+- [x] Export/import polish
 - [ ] Color palette and undertone preferences (editable, clearly heuristic)
 - [ ] Cost-per-wear and wardrobe gap insights
 - [ ] Accessibility pass (keyboard, focus, labels, contrast)
@@ -77,6 +77,8 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 **Acceptance:** install the app on a phone home screen, open it offline, and add a piece.
 
 **Delivered (2026-11-18):** slice one added the installable shell. `public/manifest.webmanifest` and 192/512/maskable icons give the app an identity; a hand-written `public/sw.js` precaches the shell plus the hashed entry JS/CSS read from the built HTML, serves navigation network-first with a cached fallback, and serves same-origin assets cache-first. The app registers the worker after load in production only. The Pages deployment workflow had already been shipping every push since M1, so its checkbox was stale; no new deployment code was needed.
+
+**Delivered (2026-11-18):** slice two made backups whole-catalogue. Format v2 carries pieces, saved looks, and wear events, including loved feedback. Import rebuilds the relationships through id maps, so a look keeps its pieces and a wear keeps its look even though the database assigns fresh ids. Version 1 files still import their pieces. Duplicate detection covers all three tables, making re-imports idempotent, and the panel reports piece/look/wear counts.
 
 ## Later, only if the core is solid
 
