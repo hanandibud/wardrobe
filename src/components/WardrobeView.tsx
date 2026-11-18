@@ -9,7 +9,6 @@ import {
 import { BackupPanel } from './BackupPanel'
 import { InsightsPanel } from './InsightsPanel'
 import { ItemCard } from './ItemCard'
-import { PalettePanel } from './PalettePanel'
 
 interface WardrobeViewProps {
   items: WardrobeItem[]
@@ -189,7 +188,6 @@ export function WardrobeView({ items, onOpenItem, onAddItem }: WardrobeViewProps
       )}
 
       {items.length > 0 && <InsightsPanel items={items} />}
-      <PalettePanel items={items} />
       <BackupPanel itemCount={items.length} />
     </div>
   )

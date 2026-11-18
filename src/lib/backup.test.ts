@@ -361,6 +361,37 @@ describe('importBackup', () => {
     expect(events[0].outfitId).toBe(outfits[0].id)
   })
 
+  it('ignores a preferences field from an older backup and still imports', async () => {
+    // A hand-edited or older backup that carries a device-local preferences
+    // blob must import cleanly: preferences were never wardrobe data and the
+    // import reads only known keys, so the field is dropped.
+    const payload = JSON.stringify({
+      app: 'wardrobe',
+      version: BACKUP_VERSION,
+      exportedAt: '2026-11-17T12:00:00.000Z',
+      preferences: {
+        undertone: 'warm',
+        contrast: 'high',
+        lovedColors: ['#6b6b3a'],
+        avoidColors: ['#a83232'],
+        updatedAt: 1,
+      },
+      items: [validItem()],
+    })
+    const file = new File([payload], 'wardrobe.json', {
+      type: 'application/json',
+    })
+
+    const result = await importBackup(file)
+
+    expect(result.imported).toEqual({ items: 1, outfits: 0, wearEvents: 0 })
+    expect(result.skipped).toBe(0)
+
+    const items = await db.items.toArray()
+    expect(items).toHaveLength(1)
+    expect(items[0].name).toBe('Olive linen camp shirt')
+  })
+
   it('aborts the whole import and writes nothing when an image is corrupt', async () => {
     const corrupt = 'data:image/png;base64,@@not really an image@@'
     const payload = backup([
