@@ -21,6 +21,7 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 - Browse, search, and filter the wardrobe
 - Build an outfit from pieces you own, with a name, occasion, and seasons
 - Save looks and browse them newest first
+- Open a saved look to see its pieces, rename it, or remove it
 - Open a piece to see its details
 - Mark a piece clean, needs wash, or in laundry
 - Remove a piece
@@ -41,9 +42,10 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 
 ![Saved outfits](screenshots/outfits-list.png)
 
+![Outfit detail](screenshots/outfit-detail.png)
+
 ## Planned
 
-- Outfit detail with rename and delete
 - Weather-aware daily suggestions
 - Wear history and feedback
 - Installable PWA
@@ -113,6 +115,7 @@ src/
     ItemThumbnail.tsx     small decorated image shared by outfit views
     OutfitsView.tsx       saved looks grid, empty states, builder switch
     OutfitBuilder.tsx     name, occasion, seasons, piece picker
+    OutfitDetail.tsx      outfit dialog with rename and delete
     CropDialog.tsx        crop frame with drag and resize handles
     BackupPanel.tsx       export/import controls and status
     StorageStatus.tsx     storage usage meter and persistence request

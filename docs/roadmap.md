@@ -36,9 +36,9 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 ## M2 — Outfits
 
 - [x] Outfit builder from wardrobe items
-- [ ] Save, rename, delete outfits
+- [x] Save, rename, delete outfits
 - [x] Occasion and season fields
-- [ ] Outfit detail view
+- [x] Outfit detail view
 - [ ] “Wore this today” action
 - [ ] Wear history list
 - [x] Prevent duplicate items in one outfit

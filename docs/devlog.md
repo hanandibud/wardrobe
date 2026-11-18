@@ -2,6 +2,17 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-18 — M2: open, rename, and remove a look
+
+- Outfit cards are now buttons. The dialog shows the saved name, date, occasion, every remaining piece with its name, and the season chips.
+- Rename happens inline in the dialog: the field is prefilled and focused, an empty name is rejected, and the heading updates in place because the list's live query re-reads the row.
+- Remove asks for confirmation, deletes the row, closes the dialog, and toasts. The cancel path leaves the outfit untouched.
+- Escape cancels a rename first and closes the dialog second, matching the item dialog. Focus starts on the close button, body scroll is locked, and the dialog is a bottom sheet on mobile.
+- If some pieces were deleted from the wardrobe, the dialog shows only the pieces that remain and counts the missing ones instead of silently shrinking the look.
+- Verified in a browser at 1440 px and 390 px: open, rename to a blank (error), rename properly, reload to confirm the new name, create a second look, delete it with confirmation, and check the first look survived. No horizontal overflow at 390 px.
+
+**Next:** “wore this today” and wear history — the last M2 slice.
+
 ## 2026-11-18 — M2: build and save an outfit
 
 - The Outfits tab is now a real page: a newest-first card grid, a "Build an outfit" action, and separate empty states for an empty wardrobe and an empty outfit list.
