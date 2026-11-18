@@ -480,6 +480,191 @@ describe('recommend', () => {
     expect(result.suggestions[0].reasons).toContain('Includes a piece you loved')
   })
 
+  it('lifts a piece in a color you love', () => {
+    const olive = item({
+      id: 50,
+      name: 'Olive shirt',
+      warmth: 3,
+      formality: 2,
+      colors: ['#6b6b3a'],
+    })
+    const blue = {
+      ...olive,
+      id: 51,
+      name: 'Blue shirt',
+      colors: ['#4a6b8a'],
+    }
+
+    const result = recommend({
+      items: [
+        olive,
+        blue,
+        item({ id: 52, name: 'Grey jeans', category: 'bottom', warmth: 3 }),
+        item({
+          id: 53,
+          name: 'Boots',
+          category: 'shoes',
+          warmth: 3,
+          formality: 2,
+        }),
+      ],
+      occasion: 'casual',
+      band: 'mild',
+      wet: false,
+      today,
+      preferences: {
+        undertone: 'unsure',
+        contrast: 'unsure',
+        lovedColors: ['#60704d'],
+        avoidColors: [],
+        updatedAt: 1,
+      },
+      limit: 1,
+    })
+
+    expect(ids(result.suggestions[0])).toContain(50)
+    expect(result.suggestions[0].reasons).toContain('Includes a color you love')
+  })
+
+  it('quietly pushes down a color you avoid', () => {
+    const olive = item({
+      id: 54,
+      name: 'Olive shirt',
+      warmth: 3,
+      formality: 2,
+      colors: ['#6b6b3a'],
+    })
+    const blue = {
+      ...olive,
+      id: 55,
+      name: 'Blue shirt',
+      colors: ['#4a6b8a'],
+    }
+
+    const result = recommend({
+      items: [
+        olive,
+        blue,
+        item({ id: 56, name: 'Grey jeans', category: 'bottom', warmth: 3 }),
+        item({
+          id: 57,
+          name: 'Boots',
+          category: 'shoes',
+          warmth: 3,
+          formality: 2,
+        }),
+      ],
+      occasion: 'casual',
+      band: 'mild',
+      wet: false,
+      today,
+      preferences: {
+        undertone: 'unsure',
+        contrast: 'unsure',
+        lovedColors: [],
+        avoidColors: ['#60704d'],
+        updatedAt: 1,
+      },
+      limit: 1,
+    })
+
+    expect(ids(result.suggestions[0])).toContain(55)
+    expect(ids(result.suggestions[0])).not.toContain(54)
+  })
+
+  it('favours the chosen undertone when the rest is equal', () => {
+    const rust = item({
+      id: 60,
+      name: 'Rust shirt',
+      warmth: 3,
+      formality: 2,
+      colors: ['#a83232'],
+    })
+    const denim = {
+      ...rust,
+      id: 61,
+      name: 'Denim shirt',
+      colors: ['#4a6b8a'],
+    }
+
+    const result = recommend({
+      items: [
+        rust,
+        denim,
+        item({ id: 62, name: 'Grey jeans', category: 'bottom', warmth: 3 }),
+        item({
+          id: 63,
+          name: 'Boots',
+          category: 'shoes',
+          warmth: 3,
+          formality: 2,
+        }),
+      ],
+      occasion: 'casual',
+      band: 'mild',
+      wet: false,
+      today,
+      preferences: {
+        undertone: 'warm',
+        contrast: 'unsure',
+        lovedColors: [],
+        avoidColors: [],
+        updatedAt: 1,
+      },
+      limit: 1,
+    })
+
+    expect(ids(result.suggestions[0])).toContain(60)
+    expect(result.suggestions[0].reasons).toContain(
+      'Warm-leaning colors, as you prefer',
+    )
+  })
+
+  it('favours the chosen contrast level when the rest is equal', () => {
+    const top = item({
+      id: 70,
+      name: 'White shirt',
+      warmth: 3,
+      formality: 2,
+      colors: ['#f6f3ee'],
+    })
+    const navy = item({
+      id: 71,
+      name: 'Navy trousers',
+      category: 'bottom',
+      warmth: 3,
+      formality: 2,
+      colors: ['#1f2a44'],
+    })
+    const grey = {
+      ...navy,
+      id: 72,
+      name: 'Grey trousers',
+      colors: ['#8a8a8a'],
+    }
+
+    const result = recommend({
+      items: [top, navy, grey],
+      occasion: 'casual',
+      band: 'mild',
+      wet: false,
+      today,
+      preferences: {
+        undertone: 'unsure',
+        contrast: 'high',
+        lovedColors: [],
+        avoidColors: [],
+        updatedAt: 1,
+      },
+      limit: 1,
+    })
+
+    expect(ids(result.suggestions[0])).toContain(71)
+    expect(result.suggestions[0].reasons).toContain(
+      'High-contrast pairing, as you prefer',
+    )
+  })
+
   it('drops a skipped combination', () => {
     const first = recommend({
       items: wardrobe(),

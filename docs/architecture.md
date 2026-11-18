@@ -12,7 +12,7 @@ flowchart LR
   COLOR --> UI
   UI --> WX[Open-Meteo weather]
   WX --> UI
-  UI --> LS[(localStorage: place + reading)]
+  UI --> LS[(localStorage: place, reading, preferences, skips)]
   UI --> SW[Service worker]
   SW --> CACHE[(Cache Storage: app shell)]
   SW --> NET[Network: HTML + hashed assets]
@@ -79,7 +79,7 @@ Dexie database named `wardrobe` with three tables:
 
 - `items` — wardrobe pieces
 - `outfits` — saved combinations of item ids, with occasion and seasons
-- `wearEvents` — one row per logged wear; feedback is reserved for M3
+- `wearEvents` — one row per logged wear; `feedback` records a loved look
 
 Images are stored as `Blob` values inside the item row. The current schema version is 1. Future schema changes must add a new `db.version(n).stores(...)` migration rather than editing version 1.
 
@@ -147,6 +147,20 @@ Location can come from the browser geolocation permission or from a city search.
 
 The Today page shell: a local-date eyebrow, the `Today` heading, the weather card, the suggestion cards, and the wear log. It holds the current weather snapshot so the suggestions can react to it, and seeds that snapshot from the cache before the panel fetches. Splitting it out keeps `App` to tab routing.
 
+### `src/lib/preferences.ts`
+
+Color preferences are a device-local lens on the wardrobe, not catalogue data:
+
+- `wardrobePalette` aggregates the colors stored on items, counting each color once per piece, sorting by frequency then first appearance, and naming each hex with `nameColor`.
+- `ColorPreferences` holds `undertone`, `contrast`, `lovedColors`, `avoidColors`, and `updatedAt`. `parsePreferences` is tolerant: unknown tone or contrast values become `unsure`, invalid or duplicate hex values are dropped, each list is capped at eight, and a color cannot be both loved and avoided.
+- `readPreferences`, `writePreferences`, and `clearPreferences` wrap `localStorage` under `wardrobe.preferences.v1`. A blocked store returns defaults, and the panel says the choice may not survive a reload.
+- `matchesAnyColor` compares with CIEDE2000 at a tolerance of 12, so a photo’s slightly shifted olive still matches the chosen olive. `dominantTemperature` classifies each piece by its first non-neutral hue; `contrastLevel` uses the CIELAB lightness spread of the first color per piece.
+- Preferences are intentionally excluded from backups: they describe this browser’s taste, not the wardrobe.
+
+### `src/components/PalettePanel.tsx`
+
+The palette card on the wardrobe page. It shows the derived palette with a heart and a crossed circle on each swatch, undertone and contrast segmented controls, two capped color lists with a native color input, and a reset. Status messages distinguish saved, blocked storage, a full list, and cleared. Controls are buttons with `aria-pressed` where a state applies, and remove targets are at least 24 px.
+
 ### `src/lib/recommend.ts`
 
 The rules-based brain behind the daily picks. All of it is pure except the small skip store, so the rules are tested without a browser.
@@ -169,6 +183,7 @@ Scoring:
 
 - item base: distance from the occasion’s ideal formality and the band’s ideal warmth, a recency penalty for pieces worn in the last three days, a small bonus for never worn, and a bonus for pieces from a “loved” look;
 - combo: colour harmony, a formality-consistency bonus, extra weight for outerwear on a cold day and for covered shoes on a wet one;
+- preferences, when set: a loved colour adds +2 per matching piece (capped +6) with the reason “Includes a color you love”; an avoided colour subtracts −3 per matching piece (capped −6); a matching undertone or contrast adds +2 with an explicit reason. “Not sure” and empty lists change nothing.
 - `colorHarmony` prefers neutrals plus one or two hue families and penalises four or more separate hues. It reads the first stored colour per piece, so a busy photo background can blur the signal — a known limitation.
 - recency is a penalty, not a hard filter, so a small wardrobe still produces picks.
 
@@ -178,7 +193,7 @@ Skips are a per-day convenience: `readSkippedKeys` / `writeSkippedKeys` keep `{ 
 
 ### `src/components/SuggestionsPanel.tsx`
 
-Owns the occasion picker and the three cards. It reads outfits and wear events live, derives recency and loved pieces, and recomputes suggestions with `useMemo`. Each card shows its pieces as thumbnails, the reasons with check marks, and two actions:
+Owns the occasion picker and the three cards. It reads outfits and wear events live, derives recency and loved pieces, reads the stored palette preferences, and recomputes suggestions with `useMemo`. A short summary under the heading states the active preferences. Each card shows its pieces as thumbnails, the reasons with check marks, and two actions:
 
 - **Wear this** opens one Dexie transaction: reuse a matching look or add a new one, then add today’s wear event only if it is not already there. Even a fast double press cannot duplicate the day.
 - **Skip** hides that combination for the rest of the day; a “Show skipped” control brings the picks back.
@@ -252,7 +267,8 @@ The canvas work is a thin wrapper: `paletteFromImage` takes a raw RGBA buffer an
 - `outfits.test.ts` — toggling without duplicates, category grouping, resolving deleted items, and the piece count copy.
 - `wear.test.ts` — local date keys, Today/Yesterday labels, history ordering, and removed looks.
 - `weather.test.ts` — band boundaries, WMO code mapping, wet conditions, cache freshness (including future timestamps), update labels, payload/place parsing, and the localStorage round trip.
-- `recommend.test.ts` — season mapping, neutrals and hue harmony, every hard filter, rain and heat exclusions, dress vs. top/bottom bases, formality, the three-pick cap, determinism, recency, loved pieces, skips, and the wear/loved joins.
+- `recommend.test.ts` — season mapping, neutrals and hue harmony, every hard filter, rain and heat exclusions, dress vs. top/bottom bases, formality, the three-pick cap, determinism, recency, loved pieces, skips, preference scoring, and the wear/loved joins.
+- `preferences.test.ts` — tolerant parsing, capped and mutually exclusive color lists, blocked-storage fallbacks, palette aggregation, perceptual matching, tone and contrast classification, and the Today summary.
 
 The canvas, IndexedDB, and pointer-drag paths are verified in a browser instead; they are covered by the manual checks recorded in the devlog. CI runs the tests between typecheck and build.
 
@@ -333,9 +349,18 @@ top 3 + explanation
 
 Shipped in `src/lib/recommend.ts` with the caps and ranges described above. The first version is rules-based: with one user and a small wardrobe, learned ranking has nothing to learn from. Loved looks are the one feedback signal that moves a score today; skips only hide a pick for the day, and the weights stay hand-tuned rather than fitted.
 
+### Color preferences (M4 slice 3, shipped)
+
+Palette preferences are a transparent tie-breaker, not a model of the wearer:
+
+- Loved and avoided colors match perceptually (CIEDE2000 ≤ 12), so nearby shades still count.
+- Undertone and contrast describe the colors in a combination, not skin. The UI says so, and the PRD explicitly excludes claims that skin tone scientifically determines flattering colors.
+- The weights stay small relative to formality, warmth, and recency, so a preference can break a tie without overriding the weather or the occasion.
+- Storage is `localStorage`, device-local, and excluded from backups.
+
 ### Deployment
 
-The Vite build is static. `base: './'` makes it portable to a GitHub Pages project URL (`https://<user>.github.io/wardrobe/`). The planned workflow builds `dist/` and deploys it with GitHub Pages. No server runtime is needed.
+The Vite build is static. `base: './'` makes it portable to a GitHub Pages project URL (`https://<user>.github.io/wardrobe/`). The workflow in `.github/workflows/deploy.yml` builds `dist/` and deploys it with GitHub Pages. No server runtime is needed.
 
 ## Security and privacy
 

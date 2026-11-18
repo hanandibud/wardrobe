@@ -2,6 +2,22 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-18 — M4: a palette you can tune, not a verdict
+
+- Added `src/lib/preferences.ts` plus `src/components/PalettePanel.tsx`. The panel sits on the wardrobe page and derives the colors that actually appear in the wardrobe, most-used first, with a piece count beside each swatch.
+- Every swatch has a heart and a crossed circle: loved colors and avoided colors are separate lists capped at eight. Adding a color to one list removes it from the other, so a color cannot be both. Custom colors are available when the garment’s color is not in the derived palette.
+- Added undertone (warm, cool, neutral, not sure) and contrast (low, medium, high, not sure). The copy is explicit that these describe the clothes and are small tie-breakers, not a claim that skin tone determines flattering colors.
+- Preferences live in `localStorage` under `wardrobe.preferences.v1`, not Dexie, so there is no schema bump. Parsing is tolerant: unknown values become “not sure”, malformed colors are dropped, lists are capped, and blocked storage falls back to the defaults with an inline warning. Preferences are deliberately not part of a backup and the panel says so.
+- Scoring changes are deliberately small. A combo with a loved color gets +2 per matching piece (capped +6) and the reason “Includes a color you love”; an avoided color costs −3 per matching piece (capped −6). A matching undertone or contrast adds +2. The defaults and “Not sure” are no-ops, so an untouched install ranks exactly as before.
+- Preference reasons are inserted before the generic formality and harmony reasons so they survive the three-reason cap; the browser check caught them being crowded out.
+- Color matching uses CIEDE2000 with a tolerance of 12, so “olive” covers the near-olive a photo produced rather than demanding an exact hex. Shared `isNeutralColor` and `hueOf` moved to `src/lib/colors.ts`; `recommend.ts` re-exports `isNeutralColor` for compatibility.
+- The Today page reads preferences on mount and shows a short summary line under the suggestion heading, e.g. “Your palette: warm undertone · high contrast · 2 loved colors · 1 avoided color.”
+- Added `preferences.test.ts` and four `recommend` integration tests: parsing, storage failure, palette counting, perceptual matching, tone and contrast classification, loved/avoided scoring, and matching reasons. Suite is 175.
+- Verified in a browser at 390 px and 1440 px: palette renders with no horizontal overflow; love, avoid, tone, and contrast survive a reload; moving a color between lists works; a custom color adds; reset clears both storage and UI; the Today summary and pick reasons respond. Screenshots kept locally only because the seeded wardrobe is test data.
+- Fixed two edges found during that pass: a full list now says “That list is full. Remove a color first.” instead of silently dropping a color, and reset confirms “Preferences cleared.” Remove targets are 24 px minimum.
+
+**Next:** M4 slice 4 — cost-per-wear and wardrobe gap insights.
+
 ## 2026-11-18 — M4: a deploy should not hide behind the HTTP cache
 
 - Live-checking the backup release found the new HTML on Pages but the old bundle still running. GitHub Pages sends `Cache-Control: max-age=600` for HTML, and the worker’s network-first fetch was accepting that HTTP-cached response.

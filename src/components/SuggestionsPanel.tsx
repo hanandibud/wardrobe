@@ -3,6 +3,7 @@ import { Check, LoaderCircle, Shirt, SkipForward, Sparkles } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { db } from '../db'
 import { pieceCountLabel } from '../lib/outfits'
+import { preferenceSummary, readPreferences } from '../lib/preferences'
 import {
   findMatchingOutfit,
   lastWornByItem,
@@ -34,6 +35,7 @@ export function SuggestionsPanel({
 }: SuggestionsPanelProps) {
   const [today] = useState(() => new Date())
   const [occasion, setOccasion] = useState<Occasion>('casual')
+  const [preferences] = useState(() => readPreferences())
   const [skipped, setSkipped] = useState<string[]>(() =>
     readSkippedKeys(localIsoDate(new Date())),
   )
@@ -46,6 +48,7 @@ export function SuggestionsPanel({
   const todayKey = localIsoDate(today)
   const band = weather ? weatherBand(weather.feelsLike) : null
   const wet = weather ? isWetCondition(weather.condition) : false
+  const paletteNote = preferenceSummary(preferences)
 
   const lastWorn = useMemo(
     () => lastWornByItem(outfits ?? [], events ?? []),
@@ -76,8 +79,9 @@ export function SuggestionsPanel({
         lastWornByItem: lastWorn,
         lovedItemIds: loved,
         skippedKeys: skipped,
+        preferences,
       }),
-    [items, occasion, band, wet, today, lastWorn, loved, skipped],
+    [items, occasion, band, wet, today, lastWorn, loved, skipped, preferences],
   )
 
   function matchingOutfit(suggestion: Suggestion) {
@@ -177,6 +181,11 @@ export function SuggestionsPanel({
               ? `Built for ${Math.round(weather.feelsLike)}° and ${weather.label.toLowerCase()}, from pieces that are clean today.`
               : 'Built from what is clean. Set a location above for weather-aware picks.'}
           </p>
+          {paletteNote && (
+            <p className="mt-1 text-xs leading-5 text-muted">
+              Your palette: {paletteNote}.
+            </p>
+          )}
         </div>
 
         <div

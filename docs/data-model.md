@@ -92,6 +92,25 @@ Weather is intentionally outside Dexie, so the feature needed no schema migratio
 
 `wardrobe.skips.v1` stores the current day’s skipped suggestion keys as `{ date, keys }`. A record from another day is ignored, so skips reset naturally at midnight. Like the weather cache, it is not wardrobe data and is not exported.
 
+## Color preferences (localStorage)
+
+The palette is a preference, not wardrobe data, so it lives outside Dexie under `wardrobe.preferences.v1`:
+
+```ts
+interface ColorPreferences {
+  undertone: 'warm' | 'cool' | 'neutral' | 'unsure'
+  contrast: 'low' | 'medium' | 'high' | 'unsure'
+  lovedColors: string[]   // up to 8 normalized hex values
+  avoidColors: string[]   // up to 8, disjoint from lovedColors
+  updatedAt: number
+}
+```
+
+- Parsing is tolerant: unknown tone or contrast values become `unsure`, invalid or duplicate hex values are dropped, and each list is capped at eight.
+- A color can be in only one list. Clearing preferences removes the key.
+- The data is device-local and is not part of a backup: taste belongs to the browser, not the catalogue.
+- A blocked or full `localStorage` falls back to the defaults; the panel warns that the choice may not survive a reload.
+
 ## App shell cache (Cache Storage)
 
 The service worker keeps the installable shell in Cache Storage under `wardrobe-shell-v2`, separate from IndexedDB:
@@ -169,16 +188,6 @@ interface WardrobeItem {
   price?: number
   care?: string
   favorite?: boolean
-}
-
-interface Preference {
-  id?: number
-  undertone?: 'warm' | 'cool' | 'neutral'
-  contrast?: 'low' | 'medium' | 'high'
-  lovedColors: string[]
-  avoidColors: string[]
-  styleTags: string[]
-  updatedAt: number
 }
 ```
 

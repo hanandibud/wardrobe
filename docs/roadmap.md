@@ -69,7 +69,7 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 - [x] PWA manifest and service worker
 - [x] GitHub Pages deployment workflow
 - [x] Export/import polish
-- [ ] Color palette and undertone preferences (editable, clearly heuristic)
+- [x] Color palette and undertone preferences (editable, clearly heuristic)
 - [ ] Cost-per-wear and wardrobe gap insights
 - [ ] Accessibility pass (keyboard, focus, labels, contrast)
 - [ ] Demo GIF and refreshed screenshots
@@ -79,6 +79,8 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 **Delivered (2026-11-18):** slice one added the installable shell. `public/manifest.webmanifest` and 192/512/maskable icons give the app an identity; a hand-written `public/sw.js` precaches the shell plus the hashed entry JS/CSS read from the built HTML, serves navigation network-first with a cached fallback, and serves same-origin assets cache-first. The app registers the worker after load in production only. The Pages deployment workflow had already been shipping every push since M1, so its checkbox was stale; no new deployment code was needed.
 
 **Delivered (2026-11-18):** slice two made backups whole-catalogue. Format v2 carries pieces, saved looks, and wear events, including loved feedback. Import rebuilds the relationships through id maps, so a look keeps its pieces and a wear keeps its look even though the database assigns fresh ids. Version 1 files still import their pieces. Duplicate detection covers all three tables, making re-imports idempotent, and the panel reports piece/look/wear counts.
+
+**Delivered (2026-11-18):** slice three added an editable palette on the wardrobe page. It derives the colors that actually appear in the wardrobe, lets the user mark loved and avoided colors, and records a warm/cool/neutral undertone and a low/medium/high contrast preference. Choices live in `localStorage` under `wardrobe.preferences.v1`, are overridable at any time, and are deliberately excluded from backups. The engine treats them as small tie-breakers: loved colors lift a combo, avoided colors push it down, and a matching tone or contrast adds a little weight, each with an honest reason. Defaults and “Not sure” are no-ops. The panel says plainly that tone and contrast describe the clothes, not a verdict about the wearer.
 
 ## Later, only if the core is solid
 

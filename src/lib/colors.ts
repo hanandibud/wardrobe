@@ -51,6 +51,51 @@ function rgbToHex(red: number, green: number, blue: number): string {
   return `#${[red, green, blue].map((value) => value.toString(16).padStart(2, '0')).join('')}`
 }
 
+/**
+ * Neutrals anchor an outfit. Very dark and very light colors count even when
+ * they carry a little saturation, because they read as black or white.
+ */
+export function isNeutralColor(hex: string): boolean {
+  const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
+  if (!match) return false
+
+  const value = match[1]
+  const red = Number.parseInt(value.slice(0, 2), 16) / 255
+  const green = Number.parseInt(value.slice(2, 4), 16) / 255
+  const blue = Number.parseInt(value.slice(4, 6), 16) / 255
+
+  const max = Math.max(red, green, blue)
+  const min = Math.min(red, green, blue)
+  const lightness = (max + min) / 2
+  const saturation =
+    max === min ? 0 : (max - min) / (1 - Math.abs(2 * lightness - 1))
+
+  return saturation < 0.2 || lightness < 0.24 || lightness > 0.9
+}
+
+/** Hue in degrees, or null when the text is not a six-digit hex color. */
+export function hueOf(hex: string): number | null {
+  const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
+  if (!match) return null
+
+  const value = match[1]
+  const red = Number.parseInt(value.slice(0, 2), 16) / 255
+  const green = Number.parseInt(value.slice(2, 4), 16) / 255
+  const blue = Number.parseInt(value.slice(4, 6), 16) / 255
+
+  const max = Math.max(red, green, blue)
+  const min = Math.min(red, green, blue)
+  const delta = max - min
+  if (delta === 0) return 0
+
+  let hue: number
+  if (max === red) hue = ((green - blue) / delta) % 6
+  else if (max === green) hue = (blue - red) / delta + 2
+  else hue = (red - green) / delta + 4
+
+  return (hue * 60 + 360) % 360
+}
+
 function labDistance(a: LabPoint, b: LabPoint): number {
   return Math.hypot(a.l - b.l, a.a - b.a, a.b - b.b)
 }

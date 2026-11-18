@@ -7,8 +7,17 @@ import type {
   WearEvent,
 } from '../types'
 import { OCCASION_LABELS } from '../types'
+import { hueOf, isNeutralColor } from './colors'
+import type { ColorPreferences } from './preferences'
+import {
+  contrastLevel,
+  dominantTemperature,
+  matchesAnyColor,
+} from './preferences'
 import { localIsoDate } from './wear'
 import type { WeatherBand } from './weather'
+
+export { isNeutralColor } from './colors'
 
 export interface Suggestion {
   key: string
@@ -26,6 +35,7 @@ export interface RecommendationInput {
   lastWornByItem?: Map<number, string>
   lovedItemIds?: Set<number>
   skippedKeys?: string[]
+  preferences?: ColorPreferences
   limit?: number
 }
 
@@ -77,46 +87,6 @@ const MONTH_SEASONS: Season[] = [
 
 export function seasonForMonth(monthIndex: number): Season {
   return MONTH_SEASONS[((monthIndex % 12) + 12) % 12]
-}
-
-export function isNeutralColor(hex: string): boolean {
-  const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
-  if (!match) return false
-
-  const value = match[1]
-  const red = Number.parseInt(value.slice(0, 2), 16) / 255
-  const green = Number.parseInt(value.slice(2, 4), 16) / 255
-  const blue = Number.parseInt(value.slice(4, 6), 16) / 255
-
-  const max = Math.max(red, green, blue)
-  const min = Math.min(red, green, blue)
-  const lightness = (max + min) / 2
-  const saturation =
-    max === min ? 0 : (max - min) / (1 - Math.abs(2 * lightness - 1))
-
-  return saturation < 0.2 || lightness < 0.24 || lightness > 0.9
-}
-
-function hueOf(hex: string): number | null {
-  const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
-  if (!match) return null
-
-  const value = match[1]
-  const red = Number.parseInt(value.slice(0, 2), 16) / 255
-  const green = Number.parseInt(value.slice(2, 4), 16) / 255
-  const blue = Number.parseInt(value.slice(4, 6), 16) / 255
-
-  const max = Math.max(red, green, blue)
-  const min = Math.min(red, green, blue)
-  const delta = max - min
-  if (delta === 0) return 0
-
-  let hue: number
-  if (max === red) hue = ((green - blue) / delta) % 6
-  else if (max === green) hue = (blue - red) / delta + 2
-  else hue = (red - green) / delta + 4
-
-  return (hue * 60 + 360) % 360
 }
 
 /**
@@ -282,10 +252,12 @@ interface ComboContext {
   todayKey: string
   lastWorn: Map<number, string>
   loved: Set<number>
+  preferences: ColorPreferences | null
 }
 
 function scoreCombo(combo: WardrobeItem[], context: ComboContext): Suggestion {
-  const { occasion, band, wet, todayKey, lastWorn, loved } = context
+  const { occasion, band, wet, todayKey, lastWorn, loved, preferences } =
+    context
   const formality = FORMALITY_RANGES[occasion]
   const average =
     combo.reduce(
@@ -317,6 +289,58 @@ function scoreCombo(combo: WardrobeItem[], context: ComboContext): Suggestion {
     if (wet && hasShoes) {
       score += 3
       reasons.push('Shoes with a bit more coverage')
+    }
+  }
+
+  if (preferences && preferences.lovedColors.length > 0) {
+    const lovedMatches = combo.filter((item) =>
+      item.colors.some((color) =>
+        matchesAnyColor(color, preferences.lovedColors),
+      ),
+    ).length
+
+    if (lovedMatches > 0) {
+      score += Math.min(lovedMatches * 2, 6)
+      reasons.push('Includes a color you love')
+    }
+  }
+
+  if (preferences && preferences.avoidColors.length > 0) {
+    const avoidMatches = combo.filter((item) =>
+      item.colors.some((color) =>
+        matchesAnyColor(color, preferences.avoidColors),
+      ),
+    ).length
+
+    if (avoidMatches > 0) score -= Math.min(avoidMatches * 3, 6)
+  }
+
+  if (preferences) {
+    if (
+      (preferences.undertone === 'warm' ||
+        preferences.undertone === 'cool') &&
+      dominantTemperature(combo) === preferences.undertone
+    ) {
+      score += 2
+      reasons.push(
+        preferences.undertone === 'warm'
+          ? 'Warm-leaning colors, as you prefer'
+          : 'Cool-leaning colors, as you prefer',
+      )
+    }
+
+    if (
+      preferences.contrast !== 'unsure' &&
+      contrastLevel(combo) === preferences.contrast
+    ) {
+      score += 2
+      reasons.push(
+        preferences.contrast === 'high'
+          ? 'High-contrast pairing, as you prefer'
+          : preferences.contrast === 'low'
+            ? 'Low-contrast pairing, as you prefer'
+            : 'Medium-contrast pairing, as you prefer',
+      )
     }
   }
 
@@ -374,6 +398,7 @@ export function recommend(input: RecommendationInput): RecommendationResult {
     lastWornByItem = new Map(),
     lovedItemIds = new Set(),
     skippedKeys = [],
+    preferences,
     limit = 3,
   } = input
 
@@ -453,6 +478,7 @@ export function recommend(input: RecommendationInput): RecommendationResult {
     todayKey,
     lastWorn: lastWornByItem,
     loved: lovedItemIds,
+    preferences: preferences ?? null,
   }
 
   const suggestions = combinations(bases, extras)
