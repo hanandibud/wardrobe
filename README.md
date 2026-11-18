@@ -2,7 +2,7 @@
 
 A local-first virtual wardrobe. Add a garment with one photo, let the app pull its main colors, and build a closet you can actually use. The long-term goal is a daily outfit suggestion based on the weather, the occasion, and what is clean.
 
-> **Status: M2 in progress.** Add, edit, crop, cut out, and back up a local wardrobe, then build and save looks from it. Everything is stored in your browser — no account, no backend, no paid API.
+> **Status: M2 complete.** Add, edit, crop, cut out, and back up a local wardrobe, build and save looks from it, and keep a wear log. Everything is stored in your browser — no account, no backend, no paid API.
 
 **Live:** https://hanandibud.github.io/wardrobe/
 
@@ -22,6 +22,8 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 - Build an outfit from pieces you own, with a name, occasion, and seasons
 - Save looks and browse them newest first
 - Open a saved look to see its pieces, rename it, or remove it
+- Log that you wore a look today, once per day
+- See the wear log newest first, grouped by day
 - Open a piece to see its details
 - Mark a piece clean, needs wash, or in laundry
 - Remove a piece
@@ -44,10 +46,13 @@ A local-first virtual wardrobe. Add a garment with one photo, let the app pull i
 
 ![Outfit detail](screenshots/outfit-detail.png)
 
+![Wear log](screenshots/wear-log.png)
+
 ## Planned
 
 - Weather-aware daily suggestions
-- Wear history and feedback
+- Occasion-first suggestions with a short reason
+- Wear feedback (loved, liked, skipped)
 - Installable PWA
 - Skin-tone and color-preference tuning (as a preference, not a scientific claim)
 
@@ -115,12 +120,12 @@ src/
     ItemThumbnail.tsx     small decorated image shared by outfit views
     OutfitsView.tsx       saved looks grid, empty states, builder switch
     OutfitBuilder.tsx     name, occasion, seasons, piece picker
-    OutfitDetail.tsx      outfit dialog with rename and delete
+    OutfitDetail.tsx      outfit dialog with rename, wear, and delete
+    WearHistoryView.tsx   wear log grouped by day
     CropDialog.tsx        crop frame with drag and resize handles
     BackupPanel.tsx       export/import controls and status
     StorageStatus.tsx     storage usage meter and persistence request
     AddItemView.tsx       add page shell
-    ComingSoon.tsx        roadmap placeholders
   hooks/
     useObjectUrl.ts       object URL lifecycle for Blob images
   lib/
@@ -131,6 +136,7 @@ src/
     images.ts             image validation and WebP compression
     outfits.ts            selection toggling, category groups, item resolution
     storage.ts            storage estimate, persistence, quota detection
+    wear.ts               local dates, wear labels, history join
     *.test.ts             Vitest unit tests for the pure logic
 docs/                     product, architecture, setup, roadmap, ADRs
 screenshots/              documentation screenshots

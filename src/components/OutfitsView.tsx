@@ -206,6 +206,7 @@ export function OutfitsView({ items, onAddItem, onSaved }: OutfitsViewProps) {
           items={items}
           onClose={closeDetail}
           onRenamed={(name) => onSaved(`Renamed to "${name}".`)}
+          onWorn={onSaved}
           onDelete={() => {
             setSelectedId(null)
             onSaved('Look removed.')

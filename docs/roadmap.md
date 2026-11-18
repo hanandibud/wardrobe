@@ -33,19 +33,19 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 
 **Decision (2026-11-17):** in-browser segmentation with `@imgly/background-removal`. It keeps the phone-only, no-install flow and needs no key or paid tier; the trade-off is an AGPL-3.0 dependency, so the repo license moved from MIT to AGPL-3.0. The first cutout downloads a ~40 MB model (`isnet_quint8`) from a free CDN.
 
-## M2 — Outfits
+## M2 — Outfits (done)
 
 - [x] Outfit builder from wardrobe items
 - [x] Save, rename, delete outfits
 - [x] Occasion and season fields
 - [x] Outfit detail view
-- [ ] “Wore this today” action
-- [ ] Wear history list
+- [x] “Wore this today” action
+- [x] Wear history list
 - [x] Prevent duplicate items in one outfit
 
 **Acceptance:** build three outfits from real clothes, save them, log one as worn, and see it in history.
 
-**Plan (2026-11-18):** M2 ships as three slices so each stays reviewable: build and save with a list, then an outfit detail with rename and delete, then “wore this today” plus history.
+**Delivered (2026-11-18):** three reviewable slices — build and save with a list, then a detail with rename and delete, then wear logging and history.
 
 ## M3 — Daily suggestion
 

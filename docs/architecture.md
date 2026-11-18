@@ -1,6 +1,6 @@
 # Architecture
 
-## Current shape (M2 in progress)
+## Current shape (M2 complete)
 
 ```mermaid
 flowchart LR
@@ -38,7 +38,7 @@ Dexie database named `wardrobe` with three tables:
 
 - `items` — wardrobe pieces
 - `outfits` — saved combinations of item ids, with occasion and seasons
-- `wearEvents` — wear history and feedback (schema ready, UI later)
+- `wearEvents` — one row per logged wear; feedback is reserved for M3
 
 Images are stored as `Blob` values inside the item row. The current schema version is 1. Future schema changes must add a new `db.version(n).stores(...)` migration rather than editing version 1.
 
@@ -77,6 +77,10 @@ Pure helpers behind the outfit UI, kept out of the components so they are testab
 - `resolveOutfitItems` maps saved ids back to rows in the saved order; ids whose item was deleted simply disappear.
 - `pieceCountLabel` handles the singular/plural copy.
 
+### `src/lib/wear.ts`
+
+The wear log stays honest about time zones. `localIsoDate` builds `YYYY-MM-DD` from local parts, so a wear logged at 23:45 stays on that day rather than moving to tomorrow in UTC. `describeWornOn` returns Today, Yesterday, or a readable date for older entries. `buildWearHistory` joins events to their look and remaining pieces, sorts by date and then insertion time, and keeps an event whose look is gone so the view can call it a removed look instead of failing.
+
 ### `src/components/OutfitsView.tsx`
 
 Owns the outfits tab. A `useLiveQuery` reads `outfits` newest first. The page has three states: wardrobe empty (send the user to Add), no saved looks, and the card grid. Each card shows up to four pieces in a fixed collage, the occasion, the name, the piece count, and the seasons. The collage sits in an absolutely positioned grid inside an `aspect-square` frame so a tall photo cannot stretch the card. Cards are buttons that open the detail dialog; switching to the builder is local state, and saving returns to the list with a toast.
@@ -87,7 +91,13 @@ The build form: name, one occasion, any seasons, and a category-grouped piece pi
 
 ### `src/components/OutfitDetail.tsx`
 
-The read view for a saved look: the name, when it was saved, the occasion, every piece with its name, and the season chips. Rename is an inline form over the dialog with its own validation; delete asks for confirmation before `db.outfits.delete`. The dialog keeps the focus on its close button, locks body scroll, and uses Escape to cancel a rename first, then to close. Deleted wardrobe pieces are counted and named as missing rather than silently dropped. After a rename, the parent's live query refreshes the heading in place.
+The read view for a saved look: the name, when it was saved, the occasion, every piece with its name, and the season chips. Rename is an inline form over the dialog with its own validation; delete asks for confirmation. The dialog keeps the focus on its close button, locks body scroll, and uses Escape to cancel a rename first, then to close. Deleted wardrobe pieces are counted and named as missing rather than silently dropped. After a rename, the parent's live query refreshes the heading in place.
+
+“Wore this today” writes one `wearEvents` row with today’s local date. A live query checks for an existing entry and the button becomes “Logged for today”, so a second press cannot duplicate the day. The check runs again inside the click handler to cover a fast double press. Deleting a look removes its wear rows in the same transaction, so the log never points at a missing outfit.
+
+### `src/components/WearHistoryView.tsx`
+
+The Today tab’s first real content. It reads `wearEvents` and `outfits` live, builds the joined history with `buildWearHistory`, and groups rows by day: the date label only appears on the first row of each day. Each row shows up to three piece thumbnails, the look’s current name, its occasion, and how many pieces remain. Empty states distinguish “save a look first” from “nothing worn yet” and link to the outfits tab.
 
 ### `src/components/ItemThumbnail.tsx`
 
@@ -132,6 +142,7 @@ The canvas work is a thin wrapper: `paletteFromImage` takes a raw RGBA buffer an
 - `storage.test.ts` — byte formatting and quota-error detection.
 - `cutout.test.ts` — progress-key wording and the retry memo key for the cutout config.
 - `outfits.test.ts` — toggling without duplicates, category grouping, resolving deleted items, and the piece count copy.
+- `wear.test.ts` — local date keys, Today/Yesterday labels, history ordering, and removed looks.
 
 The canvas, IndexedDB, and pointer-drag paths are verified in a browser instead; they are covered by the manual checks recorded in the devlog. CI runs the tests between typecheck and build.
 

@@ -1,7 +1,9 @@
-import { Calendar, Check, LoaderCircle, Pencil, Trash2, X } from 'lucide-react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { Calendar, Check, LoaderCircle, Pencil, Sun, Trash2, X } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { db } from '../db'
 import { pieceCountLabel, resolveOutfitItems } from '../lib/outfits'
+import { localIsoDate } from '../lib/wear'
 import {
   OCCASION_LABELS,
   SEASON_LABELS,
@@ -15,6 +17,7 @@ interface OutfitDetailProps {
   items: WardrobeItem[]
   onClose: () => void
   onRenamed: (name: string) => void
+  onWorn: (message: string) => void
   onDelete: () => void
 }
 
@@ -29,15 +32,30 @@ export function OutfitDetail({
   items,
   onClose,
   onRenamed,
+  onWorn,
   onDelete,
 }: OutfitDetailProps) {
   const pieces = resolveOutfitItems(outfit, items)
   const missingCount = outfit.itemIds.length - pieces.length
+  const [today] = useState(() => localIsoDate(new Date()))
+
+  const wornToday = useLiveQuery(
+    () =>
+      outfit.id === undefined
+        ? undefined
+        : db.wearEvents
+            .where('outfitId')
+            .equals(outfit.id)
+            .and((event) => event.wornOn === today)
+            .first(),
+    [outfit.id, today],
+  )
 
   const [renaming, setRenaming] = useState(false)
   const [name, setName] = useState(outfit.name)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [logging, setLogging] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
@@ -108,14 +126,48 @@ export function OutfitDetail({
     }
   }
 
+  async function handleWear() {
+    if (outfit.id === undefined || logging) return
+
+    setError(null)
+    setLogging(true)
+
+    try {
+      const existing = await db.wearEvents
+        .where('outfitId')
+        .equals(outfit.id)
+        .and((event) => event.wornOn === today)
+        .first()
+
+      if (existing) {
+        onWorn('Already in your wear log for today.')
+      } else {
+        await db.wearEvents.add({
+          outfitId: outfit.id,
+          wornOn: today,
+          createdAt: Date.now(),
+        })
+        onWorn('Added to your wear log.')
+      }
+    } catch {
+      setError('Could not add that to your wear log. Try again.')
+    } finally {
+      setLogging(false)
+    }
+  }
+
   async function handleDelete() {
-    if (deleting || outfit.id === undefined) return
+    const outfitId = outfit.id
+    if (deleting || outfitId === undefined) return
 
     setError(null)
     setDeleting(true)
 
     try {
-      await db.outfits.delete(outfit.id)
+      await db.transaction('rw', db.outfits, db.wearEvents, async () => {
+        await db.wearEvents.where('outfitId').equals(outfitId).delete()
+        await db.outfits.delete(outfitId)
+      })
       onDelete()
     } catch {
       setError('Could not remove that look. Try again.')
@@ -226,6 +278,34 @@ export function OutfitDetail({
             </div>
           </div>
 
+          <div className="mt-7 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-paper/40 p-4">
+            <div>
+              <p className="text-sm font-medium text-ink">Wore this today?</p>
+              <p className="mt-0.5 text-[11px] text-muted">
+                One entry per look, per day.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleWear}
+              disabled={wornToday !== undefined || logging}
+              className="inline-flex items-center gap-1.5 rounded-full bg-forest px-4 py-2.5 text-xs font-medium text-paper transition hover:bg-forest/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {wornToday ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : logging ? (
+                <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Sun className="h-3.5 w-3.5" />
+              )}
+              {wornToday
+                ? 'Logged for today'
+                : logging
+                  ? 'Logging...'
+                  : 'Wore this today'}
+            </button>
+          </div>
+
           {renaming && (
             <form
               onSubmit={handleRename}
@@ -295,7 +375,7 @@ export function OutfitDetail({
           <div className="mt-8 border-t border-line/70 pt-5">
             {confirmingDelete ? (
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-muted">Remove this look?</span>
+                <span className="text-xs text-muted">Remove this look? Its wear log goes too.</span>
                 <button
                   type="button"
                   onClick={handleDelete}

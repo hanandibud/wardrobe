@@ -76,6 +76,10 @@ Indexes are chosen for the planned queries:
 - `Outfit.itemIds` keeps the order the pieces were picked, so a look renders as it was built. The builder toggles a piece on and off, so an id can never appear twice.
 - `occasion` is a four-value union and `seasons` is a `Season[]`. Both live inline in the outfit row, so adding them needed no Dexie version bump — no new index was required.
 - Deleting an item does not remove its id from `outfits.itemIds`. `resolveOutfitItems` filters missing ids at read time, so an outfit simply shows the pieces that still exist.
+- `WearEvent.wornOn` is a local calendar date (`YYYY-MM-DD`), not a UTC timestamp, so an evening wear stays on the day it happened.
+- One wear per look per day is a UI rule. The table has no unique index; `OutfitDetail` checks for an existing row before writing and again inside the click handler.
+- Deleting a look deletes its wear events in the same transaction, so the log never points at a missing outfit.
+- `WearEvent.feedback` is unused until M3, and `WardrobeItem.lastWornAt` is still unused; recency scoring arrives with the daily suggestion.
 
 ## Backup format (M1)
 

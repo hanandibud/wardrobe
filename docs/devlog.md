@@ -2,6 +2,19 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-18 — M2: wear logging and the wear log
+
+- The outfit dialog now has “Wore this today”. It writes a `wearEvents` row, and a live query flips the button to “Logged for today”, so the same look cannot be logged twice in a day. The click handler re-checks before writing to cover a fast double press.
+- `wornOn` is a local calendar date, not a UTC timestamp; a wear logged at 23:45 stays on that day.
+- Added a wear log in the Today tab: rows newest first, a date heading per day, three thumbnails, the look’s current name, occasion, and piece count.
+- The log distinguishes an empty wardrobe from an empty log, and an event whose look is gone is shown as a removed look instead of disappearing.
+- Deleting a look now removes its wear rows in the same Dexie transaction, and the confirmation says so. Verified: log a temporary look, delete it, and the event count drops back with the original entry intact.
+- Removed the old `ComingSoon` placeholder; every tab now has real content.
+- Added `wear.test.ts` (10 tests): local date keys, Today/Yesterday across a month boundary, malformed dates, history ordering, and removed looks. Total suite is 85.
+- Verified in a browser at 1440 px and 390 px: empty log, log a wear, reload and see it still logged, and delete a worn look. No horizontal overflow at 390 px.
+
+**Next:** M3 — weather, the occasion picker, and the first rule-based suggestion.
+
 ## 2026-11-18 — M2: open, rename, and remove a look
 
 - Outfit cards are now buttons. The dialog shows the saved name, date, occasion, every remaining piece with its name, and the season chips.

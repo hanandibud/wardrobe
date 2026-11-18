@@ -1,12 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Check, LoaderCircle, Lock, Sun } from 'lucide-react'
+import { Check, LoaderCircle, Lock } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { AddItemView } from './components/AddItemView'
-import { ComingSoon } from './components/ComingSoon'
 import { Header } from './components/Header'
 import { ItemDetail } from './components/ItemDetail'
 import { OutfitsView } from './components/OutfitsView'
 import { WardrobeView } from './components/WardrobeView'
+import { WearHistoryView } from './components/WearHistoryView'
 import { db } from './db'
 import type { ItemStatus, Tab } from './types'
 
@@ -99,20 +99,15 @@ function App() {
             <LoadingView />
           ))}
 
-        {tab === 'today' && (
-          <ComingSoon
-            icon={Sun}
-            eyebrow="Milestone three"
-            title="What to wear, decided."
-            description="A daily suggestion that checks the weather, the occasion, and what is actually clean — then explains why it picked that combination."
-            steps={[
-              'Weather-aware layering and fabric choices.',
-              'Formality and occasion matching.',
-              'Simple feedback that improves the next pick.',
-            ]}
-            onAddItem={() => setTab('add')}
-          />
-        )}
+        {tab === 'today' &&
+          (items ? (
+            <WearHistoryView
+              items={items}
+              onSeeOutfits={() => setTab('outfits')}
+            />
+          ) : (
+            <LoadingView />
+          ))}
       </main>
 
       <footer className="border-t border-line/70 py-8">
@@ -121,7 +116,7 @@ function App() {
             <Lock className="h-3.5 w-3.5" />
             Local-first. Your photos never leave this browser.
           </p>
-          <p>Early build · M2 in progress</p>
+          <p>Early build · M2 complete</p>
         </div>
       </footer>
 
