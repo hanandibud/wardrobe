@@ -1,3 +1,12 @@
+import type {
+  Fit,
+  Material,
+  OccasionSuggestion,
+  Pattern,
+  Sleeve,
+  Subcategory,
+} from './lib/recognition/vocab'
+
 export const CATEGORY_OPTIONS = [
   { value: 'top', label: 'Top', plural: 'Tops' },
   { value: 'bottom', label: 'Bottom', plural: 'Bottoms' },
@@ -80,6 +89,14 @@ export interface WardrobeItem {
   image: Blob
   createdAt: number
   lastWornAt?: number
+  // Clothing recognition attributes. All optional so existing items and older
+  // backups keep loading; no Dexie index change was needed.
+  subcategory?: Subcategory
+  pattern?: Pattern
+  material?: Material
+  fit?: Fit
+  sleeve?: Sleeve
+  occasions?: OccasionSuggestion[]
 }
 
 export interface Outfit {
