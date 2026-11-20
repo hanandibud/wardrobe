@@ -2,6 +2,22 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-19 — M5: a photo becomes a draft you can correct
+
+- Added `src/lib/recognition/` as a provider boundary: `types.ts` (attributes, confidence, 0.6 review threshold), `vocab.ts` (one closed vocabulary plus category → type map), `parse.ts` (the validation boundary), `client.ts` (provider selection, 20-second timeout, one retry, fallback), `image.ts` (remote-request downscale), `draft.ts` (pure touched-field patch and form → stored fields), and two providers.
+- The default provider is **heuristic**: it reuses `extractPalette` and fills colors only. Every other attribute stays blank instead of being guessed. It needs no key, account, model, or network, so the shipped app keeps the free-only and offline rules.
+- The optional provider is **OpenAI-compatible** and off by default. `server/recognize.ts` is a deployable reference that keeps `RECOGNITION_API_KEY` server-side, validates MIME and a 4 MB decoded ceiling, prompts for strict JSON, and times out at 20 seconds. The browser adapter posts to `/api/recognize` and never sees a key.
+- Added a review draft, not autofill-to-save. Low-confidence values are marked “unsure”, each row has a reject button, every value remains an editable control, and a touched-field guard stops retry or cutout re-runs from overwriting corrections. Rejecting resets the field to the app default. The success copy, panel, and failure notice distinguish “local colors” from “AI recognition”.
+- Added five optional item fields — `subcategory`, `pattern`, `material`, `fit`, `sleeve` — plus `occasions`. None is indexed, so there is no Dexie version bump; the detail view renders only present values. The backup stays **v2** and treats the fields additively: older files still import, unknown vocabulary is dropped, subcategory must match the item's category, and occasions are deduped. Existing v2 exports remain valid.
+- Recognition failure is survivable by design: the client never throws, the form stays editable, retry is explicit, and dismissing the panel leaves the values in place. A 20-second timeout plus one bounded retry prevents a hung request from blocking capture; the fallback still fills local colors.
+- Privacy copy now tells the truth in both modes. The default add form says photos stay in the browser; when the AI provider is active it says the photo is sent to the configured service. The footer and crop dialog no longer make an absolute upload claim. Remote runs send a 1024 px WebP base64 payload and nothing from the wardrobe.
+- Added unit coverage for the validation boundary, envelopes, unknown values, provider selection, timeout/retry/fallback, request shape, provider errors, non-JSON, touched-field protection, corrected-value storage, low-confidence boundaries, and backup round-tripping/dedup/category checks. Suite is **224 tests across 17 files**, up from 182 / 11.
+- Verified in the browser at 1440 px and 390 px: upload → crop → “Analyzing” → colors filled → review panel → rejecting the color guess clears the field and hides the row → selecting type/pattern/material/fit/sleeve and occasions → save → reopen shows the stored attributes and no horizontal overflow. The temporary test piece was removed.
+- Fixed a bug found during the browser pass: the server returns `{ attributes, confidence }`, but the parser read attributes from the top level, so every AI response would have been discarded as “no usable attributes”. The validator now accepts both the envelope and a flat provider payload, with tests for both.
+- `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` pass. Lint retains only the pre-existing `WeatherGlyph.tsx` fast-refresh warning; the build retains the pre-existing >500 kB chunk warning from the ONNX/background-removal chunks.
+
+**Next:** M5 is complete. Keep the cloud recognizer opt-in; any future provider work should preserve the validated draft, the local fallback, and the explicit privacy switch.
+
 ## 2026-11-18 — M4: real screenshots from a real demo closet
 
 - Added `scripts/demo-seed.mjs`, a browser seed that fills the `wardrobe` database with a demo closet: twelve garments across every category, two saved looks, and two wear events (one loved). It is idempotent — each run deletes and rebuilds the database, so repeat runs give the same closet.

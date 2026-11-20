@@ -88,6 +88,33 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 
 **Delivered (2026-11-18):** slice six refreshed the documentation screenshots and shipped the seed behind them. `scripts/demo-seed.mjs` fills the `wardrobe` database with a believable demo closet — twelve garments as inline SVG silhouettes across every category, two saved looks, and two wear events — so the grid, palette, and insights panels all have real data to show. It is a browser script because photos are Blobs in IndexedDB, and it is idempotent: each run rebuilds from scratch. Against that closet the README gallery was re-captured at the real widths, plus three new shots: the insights panel, the palette panel, and the wardrobe on a phone at 390 px. An animated demo is still open under "Later".
 
+## M5 — Recognition-assisted capture
+
+- [x] Provider abstraction for garment recognition
+- [x] Local heuristic provider (colors only, offline, no key)
+- [x] Optional OpenAI-compatible provider behind a server-side function
+- [x] Strict, tolerant schema validation with unknown values dropped
+- [x] Timeout, one retry, and heuristic fallback with a warning
+- [x] Editable review panel with confidence marks and per-prediction reject
+- [x] New optional item fields: type, pattern, material, fit, sleeve, occasions
+- [x] Attributes persist, appear in item details, and ride along in v2 backups
+- [x] Unit tests for parsing, providers, retries, fallback, and drafts
+
+**Acceptance:** add a garment photo with no configuration; colors fill in
+locally, every field remains editable, and saving works with recognition
+unavailable. With the optional AI function deployed, a valid response fills the
+extra attributes, an uncertain one is marked unsure, a malformed one is
+discarded and falls back, and nothing saves until the user confirms.
+
+**Delivered (2026-11-19):** the default build recognizes colors with the same
+local palette code the app already uses. The AI path is opt-in
+(`VITE_RECOGNITION_PROVIDER=ai`) and requires deploying `server/recognize.ts`;
+the key stays server-side and the function is never bundled. Recognition never
+auto-saves, never overwrites a field the user touched, and a failed request
+falls back to the still-working manual form. Five new optional fields are
+stored without a Dexie migration because none is indexed, and the backup stays
+format v2 so existing files still import. See ADR 0004.
+
 ## Later, only if the core is solid
 
 - Optional multi-device sync (Supabase free tier or similar)

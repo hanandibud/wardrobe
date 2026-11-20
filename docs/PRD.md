@@ -67,6 +67,14 @@ The first user is the builder: one person, one phone, one browser, a real closet
 - As a user, I can use the app from a free GitHub Pages URL.
 - As a user, I can back up and restore my data.
 
+### M5 — recognition-assisted capture (shipped)
+
+- As a user, I can choose a photo and get a draft of its type, colors, pattern, material, fit, sleeve, formality, warmth, seasons, and occasions.
+- As a user, I can see which predictions are uncertain, reject any one of them, and correct the rest before saving.
+- As a user, I can retry recognition, or ignore it and type everything myself.
+- As a user, I know when a photo is sent off the device, and the default setup sends nothing.
+- As a user, I can still add a piece when recognition is unavailable or the response is malformed.
+
 ## MVP scope
 
 In:
@@ -106,6 +114,8 @@ Out:
 | Photos are too large for browser storage | Downscale to 1600 px and encode WebP before storing |
 | Background removal is hard on worn outfits | Start with flat lays and one item per photo; add cutouts later (in-browser cutout shipped in M1) |
 | Recommendations feel random | Rules first, explain every suggestion, learn from simple feedback |
+| Recognition invents attributes | Closed vocabulary, confidence marks, per-prediction reject, review before save |
+| A cloud recognizer leaks photos | Local default, key server-side, downscaled request, node-visible privacy copy |
 | Skin-tone advice feels gimmicky | Treat it as an editable preference, never a diagnosis |
 | Scope creep | One milestone at a time; the roadmap is the contract |
 | Browser storage is cleared | Export/import backup in M1 |

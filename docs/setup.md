@@ -127,10 +127,50 @@ rembg i input.jpg output.png
 
 Keep experiment images and outputs out of Git. You can import the resulting transparent PNG through the normal add flow.
 
+## Optional: remote garment recognition
+
+Not needed — the app recognizes colors locally, with no key and no network. The
+rest of the attributes are editable by hand. If you want a vision model to
+pre-fill type, pattern, material, fit, sleeve, and the scoring hints, there is
+an opt-in path:
+
+1. Deploy `server/recognize.ts` as a function at `/api/recognize` on a host you
+   control. The file is a platform-neutral `Request → Response` handler; adapt
+   the export to your host if needed.
+2. Set the server environment:
+   - `RECOGNITION_API_KEY` — required, never committed.
+   - `RECOGNITION_API_URL` — defaults to an OpenAI-compatible chat endpoint.
+   - `RECOGNITION_MODEL` — defaults to `gpt-4o-mini`.
+3. Set `VITE_RECOGNITION_PROVIDER=ai` in `.env.local` (or in the build
+   environment) and rebuild. `.env.local` is gitignored.
+
+```dotenv
+# Browser-visible: only selects the provider, never holds a secret.
+VITE_RECOGNITION_PROVIDER=ai
+
+# Server-only. Do not prefix these with VITE_.
+RECOGNITION_API_KEY=your-key
+RECOGNITION_API_URL=https://api.openai.com/v1/chat/completions
+RECOGNITION_MODEL=gpt-4o-mini
+```
+
+What leaves the browser in this mode: one downscaled WebP (longest edge
+1024 px) posting `{ imageBase64, mimeType }`. The function then sends that image
+to the vision provider you configured. No wardrobe data, item names, or notes
+are sent. If the function is missing or fails, the app retries once and falls
+back to the local heuristic; recognition never blocks saving.
+
+This path is outside the project's zero-dollar default and outside what the
+maintainer deploys to GitHub Pages. Check the provider's pricing and privacy
+terms before turning it on. Keep the key on the server: `VITE_` variables are
+compiled into the public JavaScript bundle.
+
 ## Free API notes
 
 - **Open-Meteo** — free for non-commercial use, no key. Check the current terms before publishing a commercial app.
 - **remove.bg / Photoroom** — free trials only; not part of this plan.
+- **Vision APIs** — optional and self-hosted only. They are not on the free
+  path; the default recognizer needs no account or key.
 - **GitHub Actions** — 2,000 minutes/month on the free plan for private repos; free for public repos.
 - **Supabase** — free tier exists, but it is not needed until multi-device sync. Do not add it early.
 
@@ -142,6 +182,6 @@ Keep experiment images and outputs out of Git. You can import the resulting tran
 
 **The phone cannot open the Network URL** — check that both devices are on the same Wi-Fi, allow Node.js in Windows Firewall, and use the exact IP Vite printed.
 
-**Photos disappear after clearing browser data** — that is expected. IndexedDB is per browser profile. Export/import is planned for M1.
+**Photos disappear after clearing browser data** — that is expected. IndexedDB is per browser profile. Export a backup first; import it to restore.
 
 **The app looks empty after a hard refresh** — check the browser console for IndexedDB errors. Private browsing may block or evict storage.

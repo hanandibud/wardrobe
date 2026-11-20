@@ -18,6 +18,13 @@ interface WardrobeItem {
   image: Blob             // compressed WebP
   createdAt: number       // Date.now()
   lastWornAt?: number
+  // Optional details, mostly seeded by recognition and always user-editable.
+  subcategory?: Subcategory
+  pattern?: Pattern
+  material?: Material
+  fit?: Fit
+  sleeve?: Sleeve
+  occasions?: OccasionSuggestion[]
 }
 
 interface Outfit {
@@ -46,7 +53,24 @@ Season = 'spring' | 'summer' | 'autumn' | 'winter'
 ItemStatus = 'clean' | 'dirty' | 'laundry'
 Occasion = 'casual' | 'work' | 'smart' | 'formal'
 Level = 1 | 2 | 3 | 4 | 5
+
+Subcategory = 't-shirt' | 'shirt' | 'blouse' | 'polo' | 'sweater' | 'hoodie' |
+  'jacket' | 'blazer' | 'coat' | 'jeans' | 'trousers' | 'shorts' | 'skirt' |
+  'dress' | 'sneakers' | 'boots' | 'sandals' | 'loafers' | 'bag' | 'hat' |
+  'scarf' | 'jewelry'
+Pattern = 'solid' | 'striped' | 'plaid' | 'checked' | 'floral' | 'graphic' |
+  'polka-dot' | 'camouflage' | 'color-block'
+Material = 'cotton' | 'linen' | 'wool' | 'denim' | 'leather' | 'silk' |
+  'polyester' | 'knit' | 'suede' | 'canvas' | 'cashmere'
+Fit = 'slim' | 'regular' | 'oversized'
+Sleeve = 'sleeveless' | 'short' | 'three-quarter' | 'long'
+OccasionSuggestion = 'everyday' | 'work' | 'smart' | 'formal' | 'sport' |
+  'evening' | 'outdoor'
 ```
+
+The recognition vocabularies live in `src/lib/recognition/vocab.ts`, including
+the allowed `Subcategory` for each `Category`. Labels and options are derived
+from the same source, so the form and backup validation cannot drift apart.
 
 Labels live next to the options in `src/types.ts` so the UI and data stay in sync.
 
@@ -81,6 +105,8 @@ Indexes are chosen for the planned queries:
 - Deleting a look deletes its wear events in the same transaction, so the log never points at a missing outfit.
 - `WearEvent.feedback` is used from M3 slice 3: the wear log toggles it between `loved` and absent. Only `loved` changes a suggestion score; the other values exist in the union but are never written. `WardrobeItem.lastWornAt` is still unused — recency is derived from the wear events instead of stored on the item.
 - `WardrobeItem.price` is optional and holds a plain number in the user's own currency. There is no currency field and nothing is converted, so cost per wear is simply price divided by logged wears. An unusable price is treated as no price.
+- The recognition fields are optional and non-indexed, so they needed no Dexie version bump. `undefined` means "not set"; the form never stores an empty string. `subcategory` is validated against the item's `category` on write, and `occasions` is capped by the shared validator.
+- Older rows simply read back with these fields absent, which is why the detail view renders only the ones that exist.
 
 ## Weather cache (localStorage)
 
@@ -141,6 +167,12 @@ The service worker keeps the installable shell in Cache Storage under `wardrobe-
       "seasons": ["spring", "summer"],
       "status": "clean",
       "notes": "Soft washed linen.",
+      "subcategory": "shirt",
+      "pattern": "solid",
+      "material": "linen",
+      "fit": "regular",
+      "sleeve": "short",
+      "occasions": ["everyday", "work"],
       "image": "data:image/webp;base64,...",
       "createdAt": 1763380800000
     }
@@ -171,6 +203,7 @@ The service worker keeps the installable shell in Cache Storage under `wardrobe-
 - `id` values exist only to reconnect records inside the file. Import assigns fresh database ids and remaps `outfit.itemIds` and `wearEvent.outfitId`.
 - Duplicate detection spans all three tables: a piece or look by `name` + `createdAt`, and a wear by remapped look + `wornOn`. Re-importing the same file is a no-op.
 - Version 1 files still import their pieces. The current exporter writes version 2; a newer version is rejected with a readable message.
+- Version 2 gained the optional recognition fields additively, so the version did not change. Older v2 files without them still import, and unknown or invalid values in a newer file are dropped by the same vocabulary check the form uses.
 - Invalid rows are counted and skipped. The import fails only when no valid pieces remain.
 - The file is capped at 100 MB.
 - A backup contains personal photos and wear history. It must never be committed to the repository.
