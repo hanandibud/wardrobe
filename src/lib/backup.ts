@@ -2,6 +2,21 @@ import { db } from '../db'
 import { prepareRestoredImage } from './images'
 import { parsePrice } from './insights'
 import {
+  FIT_OPTIONS,
+  MATERIAL_OPTIONS,
+  OCCASION_SUGGESTION_OPTIONS,
+  PATTERN_OPTIONS,
+  SLEEVE_OPTIONS,
+  SUBCATEGORY_CATEGORY,
+  SUBCATEGORY_OPTIONS,
+  type Fit,
+  type Material,
+  type OccasionSuggestion,
+  type Pattern,
+  type Sleeve,
+  type Subcategory,
+} from './recognition/vocab'
+import {
   CATEGORY_OPTIONS,
   OCCASION_OPTIONS,
   SEASON_OPTIONS,
@@ -40,6 +55,33 @@ const OCCASION_VALUES = new Set<string>(
 )
 const FEEDBACK_VALUES = new Set<string>(['loved', 'liked', 'meh', 'disliked'])
 
+const SUBCATEGORY_VALUES = new Set<string>(
+  SUBCATEGORY_OPTIONS.map((option) => option.value),
+)
+const PATTERN_VALUES = new Set<string>(
+  PATTERN_OPTIONS.map((option) => option.value),
+)
+const MATERIAL_VALUES = new Set<string>(
+  MATERIAL_OPTIONS.map((option) => option.value),
+)
+const FIT_VALUES = new Set<string>(FIT_OPTIONS.map((option) => option.value))
+const SLEEVE_VALUES = new Set<string>(
+  SLEEVE_OPTIONS.map((option) => option.value),
+)
+const OCCASION_SUGGESTION_VALUES = new Set<string>(
+  OCCASION_SUGGESTION_OPTIONS.map((option) => option.value),
+)
+
+/** Return a vocabulary member, or undefined when the value is not one. */
+function oneOfVocab<T extends string>(
+  value: unknown,
+  allowed: Set<string>,
+): T | undefined {
+  return typeof value === 'string' && allowed.has(value)
+    ? (value as T)
+    : undefined
+}
+
 interface BackupItem {
   id?: number
   name: string
@@ -54,6 +96,14 @@ interface BackupItem {
   image: string
   createdAt: number
   lastWornAt?: number
+  // Clothing recognition attributes. Optional and validated on import so v1/v2
+  // backups and items without them keep restoring unchanged.
+  subcategory?: Subcategory
+  pattern?: Pattern
+  material?: Material
+  fit?: Fit
+  sleeve?: Sleeve
+  occasions?: OccasionSuggestion[]
 }
 
 interface BackupOutfit {
@@ -219,7 +269,63 @@ function parseBackupItem(value: unknown): BackupItem | null {
     image: value.image,
     createdAt: value.createdAt,
     lastWornAt: isTimestamp(value.lastWornAt) ? value.lastWornAt : undefined,
+    ...parseRecognitionFields(value, value.category as Category),
   }
+}
+
+/**
+ * Extract the optional recognition attributes from a backup row. Each field is
+ * validated against its vocabulary and dropped when unknown, so a crafted or
+ * outdated backup can never store a value the app does not recognize. Returns
+ * `undefined` for absent fields so they stay off the item rather than blank.
+ */
+function parseRecognitionFields(
+  value: Record<string, unknown>,
+  category: Category,
+): {
+  subcategory?: Subcategory
+  pattern?: Pattern
+  material?: Material
+  fit?: Fit
+  sleeve?: Sleeve
+  occasions?: OccasionSuggestion[]
+} {
+  const result: ReturnType<typeof parseRecognitionFields> = {}
+
+  const subcategory = oneOfVocab<Subcategory>(
+    value.subcategory,
+    SUBCATEGORY_VALUES,
+  )
+  // A type only makes sense inside its main category, so a crafted backup
+  // cannot pair "jeans" with "top".
+  if (subcategory && SUBCATEGORY_CATEGORY[subcategory] === category) {
+    result.subcategory = subcategory
+  }
+  const pattern = oneOfVocab<Pattern>(value.pattern, PATTERN_VALUES)
+  if (pattern) result.pattern = pattern
+  const material = oneOfVocab<Material>(value.material, MATERIAL_VALUES)
+  if (material) result.material = material
+  const fit = oneOfVocab<Fit>(value.fit, FIT_VALUES)
+  if (fit) result.fit = fit
+  const sleeve = oneOfVocab<Sleeve>(value.sleeve, SLEEVE_VALUES)
+  if (sleeve) result.sleeve = sleeve
+
+  if (Array.isArray(value.occasions)) {
+    const occasions: OccasionSuggestion[] = []
+    for (const entry of value.occasions) {
+      const occasion = oneOfVocab<OccasionSuggestion>(
+        entry,
+        OCCASION_SUGGESTION_VALUES,
+      )
+      if (occasion && !occasions.includes(occasion)) {
+        occasions.push(occasion)
+      }
+      if (occasions.length >= OCCASION_SUGGESTION_OPTIONS.length) break
+    }
+    if (occasions.length > 0) result.occasions = occasions
+  }
+
+  return result
 }
 
 function parseBackupOutfit(value: unknown): BackupOutfit | null {
@@ -393,6 +499,12 @@ export async function downloadBackup(): Promise<BackupCounts> {
       image: await blobToDataUrl(item.image),
       createdAt: item.createdAt,
       lastWornAt: item.lastWornAt,
+      subcategory: item.subcategory,
+      pattern: item.pattern,
+      material: item.material,
+      fit: item.fit,
+      sleeve: item.sleeve,
+      occasions: item.occasions,
     })
   }
 
@@ -531,6 +643,12 @@ export async function importBackup(file: File): Promise<ImportResult> {
         image,
         createdAt: backup.createdAt,
         lastWornAt: backup.lastWornAt,
+        subcategory: backup.subcategory,
+        pattern: backup.pattern,
+        material: backup.material,
+        fit: backup.fit,
+        sleeve: backup.sleeve,
+        occasions: backup.occasions,
       }
       const id = await db.items.add(row)
       if (backup.id !== undefined) itemIdMap.set(backup.id, id)

@@ -132,6 +132,76 @@ describe('parseBackup', () => {
     expect(result.items[0].id).toBe(1)
   })
 
+  it('round-trips recognized attributes', () => {
+    const result = parseBackup(
+      backup([
+        validItem({
+          subcategory: 'shirt',
+          pattern: 'solid',
+          material: 'linen',
+          fit: 'regular',
+          sleeve: 'long',
+          occasions: ['everyday', 'work'],
+        }),
+      ]),
+    )
+
+    expect(result.items[0]).toMatchObject({
+      subcategory: 'shirt',
+      pattern: 'solid',
+      material: 'linen',
+      fit: 'regular',
+      sleeve: 'long',
+      occasions: ['everyday', 'work'],
+    })
+  })
+
+  it('drops unrecognized recognized attributes without failing the item', () => {
+    const result = parseBackup(
+      backup([
+        validItem({
+          subcategory: 'warp-drive',
+          pattern: 'nope',
+          material: 'unobtainium',
+          fit: 'skin-tight',
+          sleeve: 'tentacle',
+          occasions: ['everyday', 'teleportation'],
+        }),
+      ]),
+    )
+
+    expect(result.items).toHaveLength(1)
+    expect(result.items[0].subcategory).toBeUndefined()
+    expect(result.items[0].pattern).toBeUndefined()
+    expect(result.items[0].material).toBeUndefined()
+    expect(result.items[0].fit).toBeUndefined()
+    expect(result.items[0].sleeve).toBeUndefined()
+    expect(result.items[0].occasions).toEqual(['everyday'])
+  })
+
+  it('rejects a subcategory that does not belong to the item category', () => {
+    const result = parseBackup(
+      backup([validItem({ category: 'top', subcategory: 'jeans' })]),
+    )
+
+    expect(result.items[0].subcategory).toBeUndefined()
+  })
+
+  it('deduplicates imported occasions', () => {
+    const result = parseBackup(
+      backup([validItem({ occasions: ['work', 'work', 'everyday'] })]),
+    )
+
+    expect(result.items[0].occasions).toEqual(['work', 'everyday'])
+  })
+
+  it('leaves recognized attributes undefined for a version 1 backup', () => {
+    const result = parseBackup(backup([validItem({ id: undefined })], 1))
+
+    expect(result.items[0].subcategory).toBeUndefined()
+    expect(result.items[0].occasions).toBeUndefined()
+  })
+
   it('still reads a version 1 backup', () => {
     const result = parseBackup(backup([validItem({ id: undefined })], 1))
 
