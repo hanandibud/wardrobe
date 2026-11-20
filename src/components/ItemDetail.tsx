@@ -4,6 +4,14 @@ import { useObjectUrl } from '../hooks/useObjectUrl'
 import { nameColor } from '../lib/colors'
 import { formatAmount } from '../lib/insights'
 import {
+  FIT_LABELS,
+  MATERIAL_LABELS,
+  OCCASION_SUGGESTION_LABELS,
+  PATTERN_LABELS,
+  SLEEVE_LABELS,
+  SUBCATEGORY_LABELS,
+} from '../lib/recognition/vocab'
+import {
   CATEGORY_LABELS,
   FORMALITY_LABELS,
   LEVELS,
@@ -104,6 +112,34 @@ export function ItemDetail({
     item.seasons.includes(option.value),
   )
 
+  const details: Array<{ label: string; value: string }> = []
+  if (item.subcategory) {
+    details.push({
+      label: 'Type',
+      value: SUBCATEGORY_LABELS[item.subcategory],
+    })
+  }
+  if (item.pattern) {
+    details.push({ label: 'Pattern', value: PATTERN_LABELS[item.pattern] })
+  }
+  if (item.material) {
+    details.push({ label: 'Material', value: MATERIAL_LABELS[item.material] })
+  }
+  if (item.fit) {
+    details.push({ label: 'Fit', value: FIT_LABELS[item.fit] })
+  }
+  if (item.sleeve) {
+    details.push({ label: 'Sleeve', value: SLEEVE_LABELS[item.sleeve] })
+  }
+  if (item.occasions && item.occasions.length > 0) {
+    details.push({
+      label: 'Occasions',
+      value: item.occasions
+        .map((occasion) => OCCASION_SUGGESTION_LABELS[occasion])
+        .join(', '),
+    })
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-ink/45 backdrop-blur-sm sm:items-center sm:p-6 animate-fade-in"
@@ -147,7 +183,7 @@ export function ItemDetail({
               Edit this piece
             </h2>
             <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
-              Update any detail, or replace the photo. Nothing leaves this browser.
+              Update any detail, or replace the photo. Every field stays editable.
             </p>
 
             <div className="mt-7">
@@ -221,6 +257,20 @@ export function ItemDetail({
                   )}
                 </div>
               </div>
+
+              {details.length > 0 && (
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
+                  {details.map((detail) => (
+                    <div
+                      key={detail.label}
+                      className={detail.label === 'Occasions' ? 'col-span-2' : undefined}
+                    >
+                      <dt className="text-muted">{detail.label}</dt>
+                      <dd className="mt-0.5 font-medium text-ink">{detail.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
 
               <Meter
                 label="Warmth"

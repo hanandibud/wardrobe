@@ -356,7 +356,7 @@ export function CropDialog({
 
         <div className="mt-6 flex flex-col gap-3 border-t border-line/70 pt-5 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-muted">
-            Cropping happens in this browser. The original is never uploaded.
+            Cropping happens in this browser.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <button

@@ -116,9 +116,9 @@ function App() {
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 text-xs text-muted sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p className="flex items-center gap-2">
             <Lock className="h-3.5 w-3.5" />
-            Local-first. Your photos never leave this browser.
+            Local-first. Your wardrobe lives in this browser.
           </p>
-          <p>Early build · M4 in progress</p>
+          <p>Early build · M5</p>
         </div>
       </footer>
 

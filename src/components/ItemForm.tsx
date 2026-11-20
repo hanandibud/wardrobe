@@ -5,6 +5,7 @@ import {
   ImagePlus,
   Lock,
   Plus,
+  RotateCcw,
   Scissors,
   Sparkles,
   X,
@@ -19,11 +20,31 @@ import {
 } from 'react'
 import { db } from '../db'
 import { useObjectUrl } from '../hooks/useObjectUrl'
+import { useRecognition } from '../hooks/useRecognition'
+import { isRemoteRecognitionEnabled } from '../lib/recognition/client'
 import { extractPalette, nameColor } from '../lib/colors'
 import { cutOutBackground, type CutoutProgress } from '../lib/cutout'
 import { prepareImage, validateImageFile } from '../lib/images'
 import { parsePrice } from '../lib/insights'
 import { isQuotaError } from '../lib/storage'
+import {
+  FIT_OPTIONS,
+  MATERIAL_OPTIONS,
+  OCCASION_SUGGESTION_OPTIONS,
+  PATTERN_OPTIONS,
+  SLEEVE_OPTIONS,
+  subcategoriesForCategory,
+} from '../lib/recognition/vocab'
+import { subcategoryBelongsTo } from '../lib/recognition/parse'
+import {
+  recognitionPatch,
+  toStoredRecognitionFields,
+} from '../lib/recognition/draft'
+import type {
+  RecognitionClearField,
+  RecognitionField,
+  RecognitionResult,
+} from '../lib/recognition/types'
 import {
   CATEGORY_OPTIONS,
   FORMALITY_LABELS,
@@ -37,7 +58,16 @@ import {
   type Season,
   type WardrobeItem,
 } from '../types'
+import type {
+  Fit,
+  Material,
+  OccasionSuggestion,
+  Pattern,
+  Sleeve,
+  Subcategory,
+} from '../lib/recognition/vocab'
 import { CropDialog } from './CropDialog'
+import { RecognitionPanel } from './RecognitionPanel'
 
 interface ItemFormProps {
   item?: WardrobeItem
@@ -74,6 +104,7 @@ function Field({
 export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
   const isEditing = item !== undefined
   const formId = useId()
+  const remoteRecognition = isRemoteRecognitionEnabled()
 
   const [name, setName] = useState(item?.name ?? '')
   const [category, setCategory] = useState<Category>(item?.category ?? 'top')
@@ -88,6 +119,16 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
   const [price, setPrice] = useState(
     item?.price !== undefined ? String(item.price) : '',
   )
+  const [subcategory, setSubcategory] = useState<Subcategory | ''>(
+    item?.subcategory ?? '',
+  )
+  const [pattern, setPattern] = useState<Pattern | ''>(item?.pattern ?? '')
+  const [material, setMaterial] = useState<Material | ''>(item?.material ?? '')
+  const [fit, setFit] = useState<Fit | ''>(item?.fit ?? '')
+  const [sleeve, setSleeve] = useState<Sleeve | ''>(item?.sleeve ?? '')
+  const [occasions, setOccasions] = useState<OccasionSuggestion[]>(
+    item?.occasions ?? [],
+  )
   const [file, setFile] = useState<File | null>(null)
   const [cropSource, setCropSource] = useState<{
     blob: Blob
@@ -100,12 +141,90 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
   const [cutoutError, setCutoutError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [recognitionDismissed, setRecognitionDismissed] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const paletteRequest = useRef(0)
   const fileUrl = useObjectUrl(file)
   const existingImageUrl = useObjectUrl(item?.image)
   const previewUrl = fileUrl ?? existingImageUrl
+
+  /**
+   * Fields the user has touched, or that came from a saved item. Recognition
+   * never overwrites one of these, so a retry or a cutout re-run cannot undo a
+   * manual correction or wipe details loaded in edit mode.
+   */
+  const [touchedFields, setTouchedFields] = useState<ReadonlySet<string>>(
+    () =>
+      new Set(
+        [
+          item?.name ? 'name' : null,
+          item?.subcategory ? 'subcategory' : null,
+          item?.pattern ? 'pattern' : null,
+          item?.material ? 'material' : null,
+          item?.fit ? 'fit' : null,
+          item?.sleeve ? 'sleeve' : null,
+          item?.occasions?.length ? 'occasions' : null,
+        ].filter((field): field is string => field !== null),
+      ),
+  )
+
+  function markTouched(field: string) {
+    setTouchedFields((current) => {
+      if (current.has(field)) return current
+      const next = new Set(current)
+      next.add(field)
+      return next
+    })
+  }
+
+  /**
+   * Fill form fields from a recognition result, skipping anything the user has
+   * already set. Recognition is a starting point, never a correction.
+   */
+  function applyRecognition(next: RecognitionResult) {
+    const patch = recognitionPatch(next, touchedFields)
+    // A type the user (or a saved item) already has implies its category, so
+    // recognition must not move the piece to a different category underneath
+    // it. Without a locked type, a recognized category is safe to apply.
+    const categoryLocked = touchedFields.has('subcategory') && subcategory !== ''
+    const nextCategory = categoryLocked ? category : patch.category ?? category
+
+    if (patch.name) setName(patch.name)
+    if (patch.category && !categoryLocked) setCategory(patch.category)
+    if (patch.subcategory) {
+      // Only accept a subcategory consistent with the category in the form.
+      if (subcategoryBelongsTo(patch.subcategory, nextCategory)) {
+        setSubcategory(patch.subcategory)
+      }
+    } else if (
+      subcategory &&
+      !subcategoryBelongsTo(subcategory, nextCategory)
+    ) {
+      setSubcategory('')
+    }
+    if (patch.colors) {
+      // The local palette has already run, but the provider's colors are the
+      // reviewed draft shown in the panel, so they replace it rather than merge.
+      setColors(patch.colors)
+    }
+    if (patch.pattern) setPattern(patch.pattern)
+    if (patch.material) setMaterial(patch.material)
+    if (patch.fit) setFit(patch.fit)
+    if (patch.sleeve) setSleeve(patch.sleeve)
+    if (patch.warmth !== undefined) setWarmth(patch.warmth)
+    if (patch.formality !== undefined) setFormality(patch.formality)
+    if (patch.seasons) setSeasons(patch.seasons)
+    if (patch.occasions) setOccasions(patch.occasions)
+  }
+
+  const recognition = useRecognition(applyRecognition)
+  // What recognition actually contributed after the touched-field guard. The
+  // review card reads this, not the raw provider result, so retries cannot list
+  // a guess that the form deliberately kept.
+  const recognitionDraft = recognition.result
+    ? recognitionPatch(recognition.result, touchedFields)
+    : null
 
   async function handleFile(nextFile: File) {
     const validationError = validateImageFile(nextFile)
@@ -119,6 +238,7 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
     setPaletteState('detecting')
     setCutoutState('idle')
     setCutoutError(null)
+    setRecognitionDismissed(false)
 
     const request = paletteRequest.current + 1
     paletteRequest.current = request
@@ -133,6 +253,10 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
       setPaletteState('failed')
       setColors([])
     }
+
+    // Run recognition after the local palette finishes so the heuristic
+    // provider's color fill does not race with this one.
+    recognition.run(nextFile)
   }
 
   function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
@@ -171,6 +295,61 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
     setCutoutState('idle')
     setCutoutProgress(null)
     setCutoutError(null)
+    recognition.reset()
+    // Only reset recognized fields when there is no saved item; in edit mode the
+    // saved values were seeded from the item and must not be wiped.
+    if (!isEditing) clearRecognizedFields()
+  }
+
+  /** Reset the recognition-only fields back to blank. */
+  function clearRecognizedFields() {
+    setSubcategory('')
+    setPattern('')
+    setMaterial('')
+    setFit('')
+    setSleeve('')
+    setOccasions([])
+  }
+
+  /**
+   * Reject one prediction from the review card. The field is marked touched, so
+   * a later retry cannot bring the guess back, and the value returns to the
+   * app's own default rather than silently keeping the prediction.
+   */
+  function clearRecognitionField(field: RecognitionClearField) {
+    markTouched(field)
+    switch (field) {
+      case 'colors':
+        setColors([])
+        break
+      case 'subcategory':
+        setSubcategory('')
+        break
+      case 'pattern':
+        setPattern('')
+        break
+      case 'material':
+        setMaterial('')
+        break
+      case 'fit':
+        setFit('')
+        break
+      case 'sleeve':
+        setSleeve('')
+        break
+      case 'formality':
+        setFormality(2)
+        break
+      case 'warmth':
+        setWarmth(3)
+        break
+      case 'seasons':
+        setSeasons(SEASON_OPTIONS.map((option) => option.value))
+        break
+      case 'occasions':
+        setOccasions([])
+        break
+    }
   }
 
   async function handleRemoveBackground() {
@@ -199,21 +378,51 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
 
   function addColor(color: string) {
     const normalized = color.toLowerCase()
+    markTouched('colors')
     setColors((current) =>
       current.includes(normalized) ? current : [...current, normalized],
     )
   }
 
   function removeColor(color: string) {
+    markTouched('colors')
     setColors((current) => current.filter((entry) => entry !== color))
   }
 
   function toggleSeason(season: Season) {
+    markTouched('seasons')
     setSeasons((current) =>
       current.includes(season)
         ? current.filter((entry) => entry !== season)
         : [...current, season],
     )
+  }
+
+  function toggleOccasion(occasion: OccasionSuggestion) {
+    markTouched('occasions')
+    setOccasions((current) =>
+      current.includes(occasion)
+        ? current.filter((entry) => entry !== occasion)
+        : [...current, occasion],
+    )
+  }
+
+  /** Whether recognition's guess for this field was uncertain. */
+  function isLowConfidence(field: RecognitionField): boolean {
+    return recognition.isLowConfidence(field)
+  }
+
+  /**
+   * A hint for a recognized field. Only mention a guess when recognition
+   * actually produced a value, so a blank field never says "Guess — check".
+   */
+  function recognizedHint(
+    field: RecognitionField,
+    hasValue: boolean,
+    fallback: string,
+  ): string {
+    if (!hasValue) return fallback
+    return isLowConfidence(field) ? 'Guess — check' : 'Detected'
   }
 
   function resetForm() {
@@ -232,6 +441,8 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
     setCutoutProgress(null)
     setCutoutError(null)
     setError(null)
+    clearRecognizedFields()
+    recognition.reset()
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -280,6 +491,16 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
         notes: notes.trim() || undefined,
         price: parsedPrice,
         image,
+        // Recognition-only attributes. Blank becomes undefined so an item never
+        // stores an empty string where "not set" is meant.
+        ...toStoredRecognitionFields({
+          subcategory,
+          pattern,
+          material,
+          fit,
+          sleeve,
+          occasions,
+        }),
       }
 
       if (isEditing && item?.id !== undefined) {
@@ -390,7 +611,9 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
             <Lock className="h-3.5 w-3.5 shrink-0" />
             {isEditing
               ? 'A new photo replaces the saved one only when you save.'
-              : 'Photos stay in this browser. Nothing is uploaded.'}
+              : remoteRecognition
+                ? 'This photo is sent to the configured recognition service for analysis. You can still fill the form yourself.'
+                : 'Photos stay in this browser. Nothing is uploaded.'}
           </div>
         </div>
 
@@ -404,6 +627,43 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
           <p className="mt-3 text-xs text-muted">
             Could not detect colors. Add them manually below.
           </p>
+        )}
+
+        {recognition.state === 'working' && (
+          <p className="mt-3 flex items-center gap-2 text-xs text-muted">
+            <Sparkles className="h-3.5 w-3.5 animate-pulse text-accent" />
+            Analyzing the photo…
+          </p>
+        )}
+        {recognition.state === 'failed' && (
+          <div className="mt-3 space-y-2">
+            <p
+              role="alert"
+              className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-4 text-amber-900"
+            >
+              {recognition.error ?? 'Could not analyze that photo.'}
+            </p>
+            <button
+              type="button"
+              onClick={recognition.retry}
+              className="inline-flex items-center gap-1.5 rounded-full border border-line bg-card px-3 py-1.5 text-[11px] font-medium text-ink transition hover:border-ink/30"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Retry
+            </button>
+          </div>
+        )}
+
+        {recognition.state === 'ready' && recognition.result && recognitionDraft && !recognitionDismissed && (
+          <RecognitionPanel
+            result={recognition.result}
+            patch={recognitionDraft}
+            warning={recognition.warning}
+            isLowConfidence={recognition.isLowConfidence}
+            onRetry={recognition.retry}
+            onDismiss={() => setRecognitionDismissed(true)}
+            onClear={clearRecognitionField}
+          />
         )}
 
         {previewUrl && (
@@ -474,7 +734,10 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
             id={nameId}
             type="text"
             value={name}
-            onChange={(event) => setName(event.target.value)}
+            onChange={(event) => {
+              markTouched('name')
+              setName(event.target.value)
+            }}
             placeholder="e.g. Olive linen shirt"
             maxLength={80}
             className={inputClass}
@@ -489,12 +752,185 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
                 <button
                   key={option.value}
                   type="button"
-                  onClick={() => setCategory(option.value)}
+                  onClick={() => {
+                    markTouched('category')
+                    setCategory(option.value)
+                    // A subcategory only makes sense inside its category.
+                    if (
+                      subcategory &&
+                      !subcategoryBelongsTo(subcategory, option.value)
+                    ) {
+                      setSubcategory('')
+                    }
+                  }}
                   aria-pressed={isActive}
                   className={[
                     'rounded-xl border px-2 py-2.5 text-xs font-medium transition',
                     isActive
                       ? 'border-ink bg-ink text-paper'
+                      : 'border-line bg-card text-muted hover:border-ink/30 hover:text-ink',
+                  ].join(' ')}
+                >
+                  {option.label}
+                </button>
+              )
+            })}
+          </div>
+        </Field>
+
+        <div className="grid gap-6 sm:grid-cols-2">
+          <Field
+            label="Type"
+            hint={recognizedHint(
+              'subcategory',
+              Boolean(recognitionDraft?.subcategory),
+              'Optional',
+            )}
+          >
+            <select
+              value={subcategory}
+              onChange={(event) => {
+                markTouched('subcategory')
+                setSubcategory(event.target.value as Subcategory | '')
+              }}
+              aria-label="Type"
+              className={inputClass}
+            >
+              <option value="">Not set</option>
+              {subcategoriesForCategory(category).map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field
+            label="Pattern"
+            hint={recognizedHint(
+              'pattern',
+              Boolean(recognitionDraft?.pattern),
+              'Optional',
+            )}
+          >
+            <select
+              value={pattern}
+              onChange={(event) => {
+                markTouched('pattern')
+                setPattern(event.target.value as Pattern | '')
+              }}
+              aria-label="Pattern"
+              className={inputClass}
+            >
+              <option value="">Not set</option>
+              {PATTERN_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field
+            label="Material"
+            hint={recognizedHint(
+              'material',
+              Boolean(recognitionDraft?.material),
+              'If visible',
+            )}
+          >
+            <select
+              value={material}
+              onChange={(event) => {
+                markTouched('material')
+                setMaterial(event.target.value as Material | '')
+              }}
+              aria-label="Material"
+              className={inputClass}
+            >
+              <option value="">Not set</option>
+              {MATERIAL_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field
+            label="Fit"
+            hint={recognizedHint(
+              'fit',
+              Boolean(recognitionDraft?.fit),
+              'Optional',
+            )}
+          >
+            <select
+              value={fit}
+              onChange={(event) => {
+                markTouched('fit')
+                setFit(event.target.value as Fit | '')
+              }}
+              aria-label="Fit"
+              className={inputClass}
+            >
+              <option value="">Not set</option>
+              {FIT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field
+            label="Sleeve"
+            hint={recognizedHint(
+              'sleeve',
+              Boolean(recognitionDraft?.sleeve),
+              'If it has sleeves',
+            )}
+          >
+            <select
+              value={sleeve}
+              onChange={(event) => {
+                markTouched('sleeve')
+                setSleeve(event.target.value as Sleeve | '')
+              }}
+              aria-label="Sleeve length"
+              className={inputClass}
+            >
+              <option value="">Not set</option>
+              {SLEEVE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+
+        <Field
+          label="Suggested occasions"
+          hint={
+            recognitionDraft?.occasions?.length
+              ? 'Detected, editable'
+              : 'Optional'
+          }
+        >
+          <div className="flex flex-wrap gap-2">
+            {OCCASION_SUGGESTION_OPTIONS.map((option) => {
+              const isActive = occasions.includes(option.value)
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => toggleOccasion(option.value)}
+                  aria-pressed={isActive}
+                  className={[
+                    'rounded-full border px-3.5 py-2 text-xs font-medium transition',
+                    isActive
+                      ? 'border-forest bg-forest text-paper'
                       : 'border-line bg-card text-muted hover:border-ink/30 hover:text-ink',
                   ].join(' ')}
                 >
@@ -571,7 +1007,10 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
                 <button
                   key={level}
                   type="button"
-                  onClick={() => setWarmth(level)}
+                  onClick={() => {
+                    markTouched('warmth')
+                    setWarmth(level)
+                  }}
                   aria-pressed={warmth === level}
                   aria-label={`Warmth ${level}: ${WARMTH_LABELS[level]}`}
                   className={[
@@ -596,7 +1035,10 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
                 <button
                   key={level}
                   type="button"
-                  onClick={() => setFormality(level)}
+                  onClick={() => {
+                    markTouched('formality')
+                    setFormality(level)
+                  }}
                   aria-pressed={formality === level}
                   aria-label={`Formality ${level}: ${FORMALITY_LABELS[level]}`}
                   className={[
