@@ -13,9 +13,9 @@ The roadmap is the scope contract. Do not start a later milestone while the curr
 
 ## Project
 
-A local-first virtual wardrobe: React + TypeScript + Vite, Tailwind CSS, Dexie over IndexedDB, and no backend in the MVP.
+A local-first virtual wardrobe: React + TypeScript + Vite, Tailwind CSS, Dexie over IndexedDB. The default build has no backend and no account; `server/recognize.ts` is an optional, undeployed reference handler for the opt-in AI recognition path, kept out of the client bundle and typechecked by `tsconfig.server.json`.
 
-Current state: **M0 complete** (add, colors, browse, details, availability, delete). Next: **M1** (edit, crop, cutout, export/import, tests).
+Current state: **M0–M5 complete**, most recently **M5 — recognition-assisted capture** (local heuristic default plus an opt-in AI provider). See `docs/roadmap.md` for what has shipped and the later ideas.
 
 ## Commands
 
@@ -24,7 +24,7 @@ npm run dev        # Vite dev server (LAN enabled)
 npm run build      # typecheck + production build
 npm run typecheck  # TypeScript only
 npm run lint       # Oxlint
-npm test           # unit tests (Vitest)
+npm test           # unit tests (Vitest; client + reference server)
 npm run preview    # preview dist
 ```
 
