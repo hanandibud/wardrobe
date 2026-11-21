@@ -42,13 +42,18 @@ describe('openai-compatible provider', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ error: 'Upstream timed out.' }), { status: 504 }),
+        new Response(JSON.stringify({ error: 'Upstream timed out.', code: 'timeout' }), {
+          status: 504,
+          headers: { 'Retry-After': '7' },
+        }),
       ),
     )
 
-    await expect(provider.recognize({ image })).rejects.toThrow(
-      /504.*Upstream timed out/s,
-    )
+    await expect(provider.recognize({ image })).rejects.toMatchObject({
+      status: 504,
+      code: 'timeout',
+      retryAfterSeconds: 7,
+    })
   })
 
   it('throws when the endpoint returns non-JSON', async () => {

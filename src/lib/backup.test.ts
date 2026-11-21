@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Outfit, WardrobeItem, WearEvent } from '../types'
 
 // The rest of the suite runs without an IndexedDB, so only the tests that
 // touch `importBackup` install a fake one. It must be installed before `./db`
@@ -20,6 +21,7 @@ const {
   MAX_BACKUP_OUTFITS,
   MAX_BACKUP_WEAR_EVENTS,
   MAX_RESTORED_IMAGE_BYTES,
+  buildBackup,
   decodedImageByteLength,
   importBackup,
   parseBackup,
@@ -378,6 +380,81 @@ describe('parseBackup', () => {
     return expect(importBackup(file)).rejects.toThrow(
       'The photo for "Olive linen camp shirt" is too large to restore. No pieces were imported.',
     )
+  })
+})
+
+describe('buildBackup', () => {
+  it('exports recognition attributes, looks, and wear entries', async () => {
+    const item: WardrobeItem = {
+      id: 1,
+      name: 'Olive linen shirt',
+      category: 'top',
+      colors: ['#60704d'],
+      warmth: 3,
+      formality: 2,
+      seasons: ['spring'],
+      status: 'clean',
+      notes: 'Summer favourite',
+      price: 48,
+      image: new Blob(['image'], { type: 'image/webp' }),
+      createdAt: 1_763_380_800_000,
+      subcategory: 'shirt',
+      pattern: 'solid',
+      material: 'linen',
+      fit: 'regular',
+      sleeve: 'long',
+      occasions: ['everyday', 'work'],
+    }
+    const outfit: Outfit = {
+      id: 5,
+      name: 'Rainy Thursday',
+      itemIds: [1],
+      occasion: 'work',
+      seasons: ['autumn'],
+      createdAt: 1_763_470_000_000,
+    }
+    const wear: WearEvent = {
+      id: 9,
+      outfitId: 5,
+      wornOn: '2026-11-18',
+      feedback: 'loved',
+      createdAt: 1_763_500_000_000,
+    }
+
+    const backup = await buildBackup(
+      [item],
+      [outfit],
+      [wear],
+      async () => 'data:image/webp;base64,AAAA',
+    )
+
+    expect(backup.app).toBe('wardrobe')
+    expect(backup.version).toBe(BACKUP_VERSION)
+    expect(backup.items[0]).toMatchObject({
+      id: 1,
+      name: 'Olive linen shirt',
+      image: 'data:image/webp;base64,AAAA',
+      subcategory: 'shirt',
+      pattern: 'solid',
+      material: 'linen',
+      fit: 'regular',
+      sleeve: 'long',
+      occasions: ['everyday', 'work'],
+    })
+    expect(backup.outfits[0]).toMatchObject({
+      id: 5,
+      itemIds: [1],
+      occasion: 'work',
+    })
+    expect(backup.wearEvents[0]).toMatchObject({
+      id: 9,
+      outfitId: 5,
+      wornOn: '2026-11-18',
+      feedback: 'loved',
+    })
+
+    // The exported document must pass the same import validator it feeds.
+    expect(() => parseBackup(JSON.stringify(backup))).not.toThrow()
   })
 })
 

@@ -193,6 +193,18 @@ describe('parseRecognitionResponse', () => {
     expect(result.confidence).toEqual(emptyConfidence())
   })
 
+  it('accepts a material-only payload as a valid result', () => {
+    const result = parseRecognitionResponse(
+      { material: 'linen' },
+      'test-provider',
+      'ai',
+    )
+
+    expect(result.attributes.material).toBe('linen')
+    expect(result.attributes.category).toBeNull()
+    expect(result.attributes.colors).toEqual([])
+  })
+
   it('never produces an unknown value it cannot map', () => {
     const result: RecognitionResult = parseRecognitionResponse(
       { category: 'top', material: 'spider-silk', pattern: 'nope' },

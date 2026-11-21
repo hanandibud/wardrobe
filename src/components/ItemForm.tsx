@@ -37,7 +37,9 @@ import {
 } from '../lib/recognition/vocab'
 import { subcategoryBelongsTo } from '../lib/recognition/parse'
 import {
-  recognitionPatch,
+  applicableRecognitionPatch,
+  savedFieldsToProtect,
+  shouldAutoRecognizeOnPhotoChange,
   toStoredRecognitionFields,
 } from '../lib/recognition/draft'
 import type {
@@ -152,21 +154,11 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
   /**
    * Fields the user has touched, or that came from a saved item. Recognition
    * never overwrites one of these, so a retry or a cutout re-run cannot undo a
-   * manual correction or wipe details loaded in edit mode.
+   * manual correction or wipe details loaded in edit mode. In edit mode every
+   * saved field is protected, not just the recognition-only ones.
    */
   const [touchedFields, setTouchedFields] = useState<ReadonlySet<string>>(
-    () =>
-      new Set(
-        [
-          item?.name ? 'name' : null,
-          item?.subcategory ? 'subcategory' : null,
-          item?.pattern ? 'pattern' : null,
-          item?.material ? 'material' : null,
-          item?.fit ? 'fit' : null,
-          item?.sleeve ? 'sleeve' : null,
-          item?.occasions?.length ? 'occasions' : null,
-        ].filter((field): field is string => field !== null),
-      ),
+    () => savedFieldsToProtect(item),
   )
 
   function markTouched(field: string) {
@@ -180,33 +172,27 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
 
   /**
    * Fill form fields from a recognition result, skipping anything the user has
-   * already set. Recognition is a starting point, never a correction.
+   * already set and any subcategory the category rules reject. Recognition is a
+   * starting point, never a correction, and it never touches colors: the local
+   * palette is the measured source of truth.
    */
   function applyRecognition(next: RecognitionResult) {
-    const patch = recognitionPatch(next, touchedFields)
-    // A type the user (or a saved item) already has implies its category, so
-    // recognition must not move the piece to a different category underneath
-    // it. Without a locked type, a recognized category is safe to apply.
-    const categoryLocked = touchedFields.has('subcategory') && subcategory !== ''
-    const nextCategory = categoryLocked ? category : patch.category ?? category
+    const patch = applicableRecognitionPatch(next, {
+      touched: touchedFields,
+      category,
+      subcategory,
+    })
+    const nextCategory = patch.category ?? category
 
     if (patch.name) setName(patch.name)
-    if (patch.category && !categoryLocked) setCategory(patch.category)
+    if (patch.category) setCategory(patch.category)
     if (patch.subcategory) {
-      // Only accept a subcategory consistent with the category in the form.
-      if (subcategoryBelongsTo(patch.subcategory, nextCategory)) {
-        setSubcategory(patch.subcategory)
-      }
+      setSubcategory(patch.subcategory)
     } else if (
       subcategory &&
       !subcategoryBelongsTo(subcategory, nextCategory)
     ) {
       setSubcategory('')
-    }
-    if (patch.colors) {
-      // The local palette has already run, but the provider's colors are the
-      // reviewed draft shown in the panel, so they replace it rather than merge.
-      setColors(patch.colors)
     }
     if (patch.pattern) setPattern(patch.pattern)
     if (patch.material) setMaterial(patch.material)
@@ -219,12 +205,23 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
   }
 
   const recognition = useRecognition(applyRecognition)
-  // What recognition actually contributed after the touched-field guard. The
-  // review card reads this, not the raw provider result, so retries cannot list
-  // a guess that the form deliberately kept.
+  // What recognition actually contributed after the touched-field guard and the
+  // category/subcategory consistency rules. The review card reads this, not the
+  // raw provider result, so it never lists a guess the form deliberately kept.
   const recognitionDraft = recognition.result
-    ? recognitionPatch(recognition.result, touchedFields)
+    ? applicableRecognitionPatch(recognition.result, {
+        touched: touchedFields,
+        category,
+        subcategory,
+      })
     : null
+  const hasAppliedRecognition =
+    recognitionDraft !== null && Object.keys(recognitionDraft).length > 0
+  const recognitionPanelVisible =
+    recognition.state === 'ready' &&
+    recognition.result !== null &&
+    !recognitionDismissed &&
+    (hasAppliedRecognition || recognition.warning !== null)
 
   async function handleFile(nextFile: File) {
     const validationError = validateImageFile(nextFile)
@@ -234,17 +231,27 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
     }
 
     setError(null)
+
+    // A new photo invalidates any analysis still in flight: its result would
+    // describe a picture the user has already replaced. Abort it now, before
+    // the palette work, so a slow response cannot fill this draft later.
+    recognition.reset()
+    paletteRequest.current += 1
+
     setFile(nextFile)
     setPaletteState('detecting')
     setCutoutState('idle')
     setCutoutError(null)
     setRecognitionDismissed(false)
+    // Never show or save the previous photo's palette against the new image.
+    setColors([])
 
     const request = paletteRequest.current + 1
     paletteRequest.current = request
 
+    let palette: string[] | undefined
     try {
-      const palette = await extractPalette(nextFile)
+      palette = await extractPalette(nextFile)
       if (paletteRequest.current !== request) return
       setColors(palette)
       setPaletteState('ready')
@@ -252,11 +259,24 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
       if (paletteRequest.current !== request) return
       setPaletteState('failed')
       setColors([])
+      // Tell the heuristic not to decode the same failing photo again. An
+      // empty palette is a valid local result; the user can add colors by hand.
+      palette = []
     }
 
-    // Run recognition after the local palette finishes so the heuristic
-    // provider's color fill does not race with this one.
-    recognition.run(nextFile)
+    // In edit mode recognition is an explicit action. Replacing a photo or
+    // cutting out an existing item must not rewrite saved details on its own.
+    if (shouldAutoRecognizeOnPhotoChange(isEditing)) {
+      recognition.run(nextFile, { palette })
+    }
+  }
+
+  /** Explicitly analyze the current photo, used in edit mode. */
+  function analyzeCurrentPhoto() {
+    const source = file ?? item?.image
+    if (!source || recognition.state === 'working') return
+    setRecognitionDismissed(false)
+    recognition.run(source, { palette: colors })
   }
 
   function handleInputChange(event: ChangeEvent<HTMLInputElement>) {
@@ -319,8 +339,15 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
   function clearRecognitionField(field: RecognitionClearField) {
     markTouched(field)
     switch (field) {
-      case 'colors':
-        setColors([])
+      case 'name':
+        setName('')
+        break
+      case 'category':
+        setCategory('top')
+        if (subcategory && !subcategoryBelongsTo(subcategory, 'top')) {
+          markTouched('subcategory')
+          setSubcategory('')
+        }
         break
       case 'subcategory':
         setSubcategory('')
@@ -413,8 +440,9 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
   }
 
   /**
-   * A hint for a recognized field. Only mention a guess when recognition
-   * actually produced a value, so a blank field never says "Guess — check".
+   * A hint for a recognized field. Only mention a suggestion when recognition
+   * actually produced an applied value. Confidence is the model's own estimate,
+   * not a calibrated probability, so the label never says "Detected".
    */
   function recognizedHint(
     field: RecognitionField,
@@ -422,7 +450,7 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
     fallback: string,
   ): string {
     if (!hasValue) return fallback
-    return isLowConfidence(field) ? 'Guess — check' : 'Detected'
+    return isLowConfidence(field) ? 'Model estimate · check' : 'Model estimate'
   }
 
   function resetForm() {
@@ -441,6 +469,9 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
     setCutoutProgress(null)
     setCutoutError(null)
     setError(null)
+    setTouchedFields(new Set())
+    setRecognitionDismissed(false)
+    paletteRequest.current += 1
     clearRecognizedFields()
     recognition.reset()
   }
@@ -493,14 +524,17 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
         image,
         // Recognition-only attributes. Blank becomes undefined so an item never
         // stores an empty string where "not set" is meant.
-        ...toStoredRecognitionFields({
-          subcategory,
-          pattern,
-          material,
-          fit,
-          sleeve,
-          occasions,
-        }),
+        ...toStoredRecognitionFields(
+          {
+            subcategory,
+            pattern,
+            material,
+            fit,
+            sleeve,
+            occasions,
+          },
+          category,
+        ),
       }
 
       if (isEditing && item?.id !== undefined) {
@@ -629,6 +663,33 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
           </p>
         )}
 
+        {isEditing &&
+          remoteRecognition &&
+          previewUrl &&
+          (recognition.state === 'idle' ||
+            (recognition.state === 'ready' && !recognitionPanelVisible)) && (
+            <button
+              type="button"
+              onClick={analyzeCurrentPhoto}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-line bg-card px-3.5 py-2 text-xs font-medium text-ink transition hover:border-ink/30"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-accent" />
+              {recognition.state === 'ready' ? 'Analyze again' : 'Analyze photo'}
+            </button>
+          )}
+
+        {isEditing &&
+          remoteRecognition &&
+          recognition.state === 'ready' &&
+          recognition.result &&
+          !hasAppliedRecognition &&
+          !recognition.warning &&
+          !recognitionDismissed && (
+            <p className="mt-3 text-xs text-muted">
+              No new details were applied. Saved values are unchanged.
+            </p>
+          )}
+
         {recognition.state === 'working' && (
           <p className="mt-3 flex items-center gap-2 text-xs text-muted">
             <Sparkles className="h-3.5 w-3.5 animate-pulse text-accent" />
@@ -755,11 +816,13 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
                   onClick={() => {
                     markTouched('category')
                     setCategory(option.value)
-                    // A subcategory only makes sense inside its category.
+                    // A subcategory only makes sense inside its category, and
+                    // clearing it is a user decision recognition must respect.
                     if (
                       subcategory &&
                       !subcategoryBelongsTo(subcategory, option.value)
                     ) {
+                      markTouched('subcategory')
                       setSubcategory('')
                     }
                   }}
@@ -914,7 +977,7 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
           label="Suggested occasions"
           hint={
             recognitionDraft?.occasions?.length
-              ? 'Detected, editable'
+              ? 'Model estimate, editable'
               : 'Optional'
           }
         >
@@ -941,7 +1004,7 @@ export function ItemForm({ item, onSaved, onCancel }: ItemFormProps) {
           </div>
         </Field>
 
-        <Field label="Colors" hint="Detected from the photo">
+        <Field label="Colors" hint="Measured locally from the photo">
           <div className="flex min-h-11 flex-wrap items-center gap-2 rounded-xl border border-line bg-paper/50 p-2">
             {colors.map((color, index) => (
               <span

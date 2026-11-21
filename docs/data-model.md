@@ -105,7 +105,7 @@ Indexes are chosen for the planned queries:
 - Deleting a look deletes its wear events in the same transaction, so the log never points at a missing outfit.
 - `WearEvent.feedback` is used from M3 slice 3: the wear log toggles it between `loved` and absent. Only `loved` changes a suggestion score; the other values exist in the union but are never written. `WardrobeItem.lastWornAt` is still unused — recency is derived from the wear events instead of stored on the item.
 - `WardrobeItem.price` is optional and holds a plain number in the user's own currency. There is no currency field and nothing is converted, so cost per wear is simply price divided by logged wears. An unusable price is treated as no price.
-- The recognition fields are optional and non-indexed, so they needed no Dexie version bump. `undefined` means "not set"; the form never stores an empty string. `subcategory` is validated against the item's `category` on write, and `occasions` is capped by the shared validator.
+- The recognition fields are optional and non-indexed, so they needed no Dexie version bump. `undefined` means "not set"; the form never stores an empty string. On edit, every optional key is written (as a value or `undefined`) so Dexie deletes a cleared field instead of leaving the old value behind. `subcategory` is validated against the item's `category` on write, and `occasions` is capped by the shared validator. In edit mode all saved recognition and core fields are protected from automatic prediction; recognition runs only from an explicit action.
 - Older rows simply read back with these fields absent, which is why the detail view renders only the ones that exist.
 
 ## Weather cache (localStorage)

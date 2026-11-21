@@ -41,25 +41,43 @@ and confidence values are dropped or clamped. Nested `{ attributes, confidence }
 and flat provider payloads are both accepted. A payload with no usable signal
 is a failure, which triggers the fallback.
 
-The client wraps every run in a 20-second timeout, retries a failing AI request
-once, and then falls back to the heuristic with a readable warning. The hook
-never throws into the form. A remote request is downscaled to 1024 px and
-re-encoded as WebP first, so only a small preview of the photo leaves the
-device.
+The client wraps every run in a 20-second timeout, retries only network and
+transient 5xx failures once, and then falls back to the heuristic with a readable
+warning. Authentication failures, other 4xx responses, rate limits, timeouts,
+and caller cancellations are not retried. The hook aborts an in-flight request
+when a new photo is selected or the form unmounts. `recognizeGarment` never
+throws into the form.
+
+A remote request is downscaled to 1024 px WebP with explicit EXIF orientation,
+flattened onto white, and capped by decoded pixels and final bytes. If
+preparation fails, the original is not uploaded; the app falls back to the local
+heuristic instead.
 
 Recognition is a draft, not a write:
 
 - Values land in normal editable fields.
-- Low-confidence fields (≤ 0.6) are marked "unsure".
-- Each prediction can be rejected individually.
+- Model confidence is presented as a 0–1 estimate, not a calibrated probability;
+  low-confidence fields (≤ 0.6) are marked “low confidence”.
+- Each applied prediction can be rejected individually, and the review panel is
+  built from the patch that actually reached the form.
 - A touched-field guard stops a retry or cutout re-run from overwriting a manual
-  correction or a saved item loaded in edit mode.
+  correction. In edit mode every saved field is protected, and recognition only
+  runs from an explicit “Analyze photo” action.
+- Colors are never written by recognition: the locally measured palette stays
+  authoritative.
+- Clearing an optional field writes `undefined` so Dexie removes the stored
+  value; a category change cannot leave an incompatible type behind.
 - Nothing is stored until the user presses Save.
 - The optional fields are added to the existing backup format without a version
   bump, because they are non-indexed and older v2 files remain valid.
 
 The shipped default remains free, keyless, and local; the cloud path is
-documented as a self-hosted option, not a product requirement.
+documented as a self-hosted option, not a product requirement. The reference
+function is not a production-hardened public proxy: it has a request-body cap,
+magic-byte image validation, a 15-second upstream timeout, safe error codes, an
+optional CORS allowlist, and a best-effort single-instance rate limiter, but no
+authentication or distributed rate limiting. A deployer must add platform abuse
+protection and a provider spending cap before exposing a paid key.
 
 ## Consequences
 
@@ -76,8 +94,13 @@ documented as a self-hosted option, not a product requirement.
 - The default only recognizes colors. Type, pattern, material, fit, sleeve,
   formality, warmth, seasons, and occasions are only filled by the opt-in AI
   path; users type them otherwise.
-- The AI path requires a backend the project does not ship, and its cost and
-  privacy terms are the deployer's responsibility.
+- The AI path requires a backend the project does not ship, and its cost,
+  abuse protection, and privacy terms are the deployer's responsibility. The
+  reference function is deliberately not a production-ready public proxy.
+- Model confidence is self-reported and uncalibrated. No accuracy evaluation
+  dataset ships with the app, so the values are suggestions, not verified facts.
+- AI color guesses are ignored; the locally measured palette remains the only
+  source of item colors.
 - The taxonomy is a closed vocabulary. A real but unlisted value (for example
   "corduroy") becomes `null` instead of a new option.
 - A remote run sends the image and the model's answer through a third party;

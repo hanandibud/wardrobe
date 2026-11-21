@@ -26,8 +26,10 @@ import {
   type ItemStatus,
   type Level,
   type Occasion,
+  type Outfit,
   type Season,
   type WardrobeItem,
+  type WearEvent,
 } from '../types'
 
 export const BACKUP_VERSION = 2
@@ -474,14 +476,19 @@ export function parseBackup(text: string): ParsedBackup {
   }
 }
 
-export async function downloadBackup(): Promise<BackupCounts> {
-  const [items, outfits, wearRows] = await Promise.all([
-    db.items.orderBy('createdAt').toArray(),
-    db.outfits.orderBy('createdAt').toArray(),
-    db.wearEvents.toArray(),
-  ])
-  const wearEvents = wearRows.sort((a, b) => a.createdAt - b.createdAt)
-
+/**
+ * Build the exported backup document. Image encoding is injectable so the
+ * export shape can be tested without a browser `FileReader`; production uses
+ * `blobToDataUrl`.
+ *
+ * Items are expected in display order and wear events sorted by creation time.
+ */
+export async function buildBackup(
+  items: WardrobeItem[],
+  outfits: Outfit[],
+  wearRows: WearEvent[],
+  encodeImage: (blob: Blob) => Promise<string> = blobToDataUrl,
+): Promise<WardrobeBackup> {
   const backupItems: BackupItem[] = []
 
   for (const item of items) {
@@ -496,7 +503,7 @@ export async function downloadBackup(): Promise<BackupCounts> {
       status: item.status,
       notes: item.notes,
       price: item.price,
-      image: await blobToDataUrl(item.image),
+      image: await encodeImage(item.image),
       createdAt: item.createdAt,
       lastWornAt: item.lastWornAt,
       subcategory: item.subcategory,
@@ -508,7 +515,7 @@ export async function downloadBackup(): Promise<BackupCounts> {
     })
   }
 
-  const backup: WardrobeBackup = {
+  return {
     app: BACKUP_APP,
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
@@ -521,7 +528,7 @@ export async function downloadBackup(): Promise<BackupCounts> {
       seasons: outfit.seasons,
       createdAt: outfit.createdAt,
     })),
-    wearEvents: wearEvents.map((wearEvent) => ({
+    wearEvents: wearRows.map((wearEvent) => ({
       id: wearEvent.id,
       outfitId: wearEvent.outfitId,
       wornOn: wearEvent.wornOn,
@@ -529,6 +536,17 @@ export async function downloadBackup(): Promise<BackupCounts> {
       createdAt: wearEvent.createdAt,
     })),
   }
+}
+
+export async function downloadBackup(): Promise<BackupCounts> {
+  const [items, outfits, wearRows] = await Promise.all([
+    db.items.orderBy('createdAt').toArray(),
+    db.outfits.orderBy('createdAt').toArray(),
+    db.wearEvents.toArray(),
+  ])
+  const wearEvents = wearRows.sort((a, b) => a.createdAt - b.createdAt)
+
+  const backup = await buildBackup(items, outfits, wearEvents)
 
   const blob = new Blob([JSON.stringify(backup, null, 2)], {
     type: 'application/json',

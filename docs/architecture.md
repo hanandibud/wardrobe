@@ -95,13 +95,20 @@ recognition, accepts an optional price, and writes with either `items.add` or
 mode with a cancel path. Replacing a photo only touches the saved Blob when the
 user saves the form.
 
-Recognition is wired as a draft: a new photo triggers one run, results fill only
-untouched fields, and the review panel reports what was found. Low-confidence
-values are marked, each prediction can be rejected, and every field stays a
-normal editable control. The `touchedFields` ref guards manual corrections and
-saved values in edit mode, so a retry or cutout re-run only fills blanks. The
-form stays fully usable when recognition fails; the failure is a small notice,
-not a blocking state.
+Recognition is wired as a draft: a new photo on a new item triggers one run,
+results fill only untouched fields, and the review panel reports exactly what was
+applied. In edit mode recognition is an explicit “Analyze photo” action, and
+every saved field is protected, so replacing a photo or cutting out an existing
+item cannot rewrite saved details on its own. Low-confidence values are marked,
+each prediction can be rejected, and every field stays a normal editable control.
+The form stays fully usable when recognition fails; the failure is a small
+notice, not a blocking state.
+
+The local palette is the source of truth for colors. Recognition (including the
+optional AI provider) never writes the color field; it only runs after the
+palette has been measured. Clearing an optional field in edit mode writes
+`undefined`, which Dexie removes from the stored row instead of leaving the old
+value behind.
 
 ### `src/lib/recognition/`
 
@@ -119,35 +126,49 @@ browser or a network:
   payload and the server's `{ attributes, confidence }` envelope are accepted.
   A payload with no usable signal throws so the client can fall back.
 - `client.ts` — chooses the provider from `VITE_RECOGNITION_PROVIDER`, applies a
-  20-second timeout, retries an AI request once, and falls back to the
-  heuristic with a readable warning. `recognizeGarment` never throws.
-- `image.ts` — downscales a remote request to 1024 px WebP. It returns the
-  original blob when the browser cannot decode it, so a request is never
-  blocked by resizing.
-- `providers/heuristic.ts` — the default. Reuses `extractPalette` and fills
-  colors only; every other attribute stays blank rather than guessed.
+  20-second timeout, retries only network/transient 5xx failures, treats
+  auth/4xx/rate-limit/timeout outcomes as permanent, and falls back to the
+  heuristic with a readable warning. A caller `AbortSignal` cancels an in-flight
+  request. `recognizeGarment` never throws.
+- `image.ts` — downscales a remote request to 1024 px WebP with explicit EXIF
+  orientation, flattens transparency onto white, caps decoded pixels and final
+  bytes, and returns `null` on failure. The original is never uploaded when
+  preparation fails; the caller uses the local heuristic instead.
+- `providers/heuristic.ts` — the default. Reuses the measured palette when one
+  is supplied and fills colors only; every other attribute stays blank rather
+  than guessed.
 - `providers/openai-compatible.ts` — posts `{ imageBase64, mimeType }` to
   `/api/recognize` and validates the response through `parse.ts`. It never sees
   an API key.
-- `draft.ts` — pure `recognitionPatch` (skip touched fields) and
-  `toStoredRecognitionFields` (empty form values become `undefined`).
+- `draft.ts` — pure `recognitionPatch` (skip touched fields),
+  `applicableRecognitionPatch` (also enforce category/type consistency),
+  `savedFieldsToProtect` (all saved fields in edit mode), and
+  `toStoredRecognitionFields` (always returns every key so a cleared value is
+  actually removed from IndexedDB).
 
 ### `src/components/RecognitionPanel.tsx`
 
-The review card under the photo: confidence chips, an "unsure" mark, per-row
-reject buttons, retry, and dismiss. It only reports and clears; it never saves.
-Rejecting a row marks the corresponding form field as touched and resets it to
-the app default, so a retry cannot put the same guess back.
+The review card under the photo: model-estimate chips, a low-confidence mark,
+per-row reject buttons, retry, and dismiss. It is built from the patch that was
+actually applied, so a category/type pair rejected by consistency checks never
+appears as filled. Every row is labelled as a model estimate rather than a
+verified fact; confidence is not presented as a calibrated probability. It only
+reports and clears; it never saves. Rejecting a row marks the corresponding form
+field as touched and resets it to the app default, so a retry cannot put the same
+guess back.
 
 ### `server/recognize.ts`
 
-An optional, deployable reference for the cloud path. It is outside
-`tsconfig.app.json` and is not part of the Vite build. It validates method,
-MIME type, and a 4 MB decoded-image ceiling; reads `RECOGNITION_API_KEY` from
-the server environment; calls an OpenAI-compatible chat endpoint with a strict
-JSON prompt and a 20-second timeout; and returns either
-`{ attributes, confidence }` or `{ error }`. The client validates the payload
-again, because the function does not trust the model either.
+An optional, deployable reference for the cloud path. It is outside the Vite
+build but included in the `tsconfig.server.json` typecheck. It validates method,
+a request-body cap before JSON parsing, MIME type, a 4 MB decoded-image ceiling,
+and the real image signature; reads `RECOGNITION_API_KEY` from the server
+environment; calls an OpenAI-compatible chat endpoint with a strict JSON prompt,
+a 15-second timeout, and a bounded output length; and returns either
+`{ attributes, confidence }` or a safe `{ error, code }`. A best-effort
+single-instance rate limiter and an optional CORS allowlist are integration
+points, not authentication. The client validates the payload again, because the
+function does not trust the model either.
 
 ### `src/db.ts`
 
@@ -345,28 +366,35 @@ The canvas work is a thin wrapper: `paletteFromImage` takes a raw RGBA buffer an
 
 ## Tests
 
-`npm test` runs Vitest over the pure logic. No browser or DOM is needed, because the parts worth testing were kept free of canvas and storage calls:
+`npm test` runs Vitest without a real browser. Most tests exercise pure logic;
+the DOM, canvas, and IndexedDB boundaries are either mocked or provided by
+`fake-indexeddb`, and the reference server is exercised through Web
+`Request`/`Response` objects in Node:
 
 - `colors.test.ts` — color naming, and palette extraction from a hand-built RGBA buffer.
 - `crop.test.ts` — fit, default frame, clamping, and corner resizing, including ratio and bounds.
 - `images.test.ts` — the accepted types and the 20 MB limit.
-- `backup.test.ts` — version checks including v1 compatibility, broken files, skipped items, looks, and wear entries, and field filtering.
+- `backup.test.ts` — version checks including v1 compatibility, broken files, skipped items, looks, and wear entries, field filtering, and export of the recognition attributes.
 - `storage.test.ts` — byte formatting and quota-error detection.
 - `cutout.test.ts` — progress-key wording and the retry memo key for the cutout config.
 - `outfits.test.ts` — toggling without duplicates, category grouping, resolving deleted items, and the piece count copy.
 - `wear.test.ts` — local date keys, Today/Yesterday labels, history ordering, and removed looks.
 - `weather.test.ts` — band boundaries, WMO code mapping, wet conditions, cache freshness (including future timestamps), update labels, payload/place parsing, and the localStorage round trip.
 - `recommend.test.ts` — season mapping, neutrals and hue harmony, every hard filter, rain and heat exclusions, dress vs. top/bottom bases, formality, the three-pick cap, determinism, recency, loved pieces, skips, preference scoring, and the wear/loved joins.
-- `preferences.test.ts` — tolerant parsing, capped and mutually exclusive color lists, blocked-storage fallbacks, palette aggregation, perceptual matching, tone and contrast classification, and the Today summary.
 - `insights.test.ts` — price parsing and formatting, wear counting through looks, the cost summary including unworn and unpriced pieces, and every gap rule including the empty-wardrobe case.
-- `recognition/parse.test.ts` — complete payloads, flat and server envelopes, unknown vocabulary, invalid colors, out-of-range levels, category/subcategory consistency, signal-free failures, and confidence clamping.
-- `recognition/client.test.ts` — provider selection, retry, timeout, fallback to the heuristic, and the no-usable-attributes warning, with deterministic provider mocks.
-- `recognition/openai-compatible.test.ts` — request shape, server error messages, non-JSON responses, and schema validation at the network adapter.
+- `recognition/parse.test.ts` — complete payloads, flat and server envelopes, unknown vocabulary, invalid colors, out-of-range levels, category/subcategory consistency, signal-free failures, material-only responses, and confidence clamping.
+- `recognition/client.test.ts` — provider selection, transient-vs-permanent retry rules, auth/rate-limit mapping, timeout, caller cancellation, fallback to the heuristic (including fallback failure), and palette reuse, with deterministic provider mocks.
+- `recognition/openai-compatible.test.ts` — request shape, server error codes and Retry-After, non-JSON responses, and schema validation at the network adapter.
 - `recognition/types.test.ts` — the low-confidence threshold, including the boundary and the no-result case.
-- `recognition/draft.test.ts` — touched-field protection and conversion of form values to stored optional fields, including corrected values.
-- `recognition/image.test.ts` — graceful fallback when the browser cannot decode an image for a remote request.
+- `recognition/draft.test.ts` — touched/saved-field protection, applicable category/type filtering, explicit edit-mode recognition, and conversion of form values to stored optional fields (including cleared keys and guarded types).
+- `recognition/persistence.test.ts` — fake-IndexedDB regression tests for clearing optional fields, category changes, rejected predictions, preserved unrelated fields, and replacement-photo protection.
+- `recognition/image.test.ts` — EXIF orientation, aspect-ratio downscaling, pixel and byte caps, transparency flattening, and the null fallback for unsupported images.
+- `server/recognize.test.ts` — method/body/image validation, base64 and magic-byte checks, safe error mapping, provider request construction, timeout handling, rate limiting, and CORS.
 
-The canvas, IndexedDB, and pointer-drag paths are verified in a browser instead; they are covered by the manual checks recorded in the devlog. CI runs the tests between typecheck and build.
+The canvas and pointer-drag paths are verified in a browser instead; IndexedDB
+write/clear behavior has `fake-indexeddb` regression coverage, and the manual
+checks are recorded in the devlog. CI runs the tests between typecheck and
+build.
 
 ### `src/hooks/useObjectUrl.ts`
 
@@ -413,8 +441,8 @@ Two providers, one validated contract:
 
 | Provider | Default | Network | What it fills |
 | --- | --- | --- | --- |
-| Heuristic | Yes | None | Colors |
-| OpenAI-compatible | No | `POST /api/recognize` | Every recognized attribute |
+| Heuristic | Yes | None | Colors (measured locally) |
+| OpenAI-compatible | No | `POST /api/recognize` | Recognized attributes except colors |
 
 The default is deliberately conservative: pixels alone cannot tell cotton from
 linen, so the local provider does not pretend. The AI path is opt-in because a
@@ -422,12 +450,18 @@ static site cannot hide a key and a paid vision call is outside the free-only
 constraint. When enabled, the image is downscaled to 1024 px WebP before it
 leaves the browser, and only the deployer's function sees the key.
 
+The local palette remains authoritative in both modes: an AI response can
+suggest colors, but the app does not apply them over the measured palette.
+
 The review rules are part of the contract, not polish:
 
-- a low-confidence value (≤ 0.6) is marked "unsure";
+- confidence is UI copy for the model's own 0–1 estimate, never a calibrated
+  probability;
+- a low-confidence value (≤ 0.6) is marked "low confidence";
 - each reviewed row can be rejected, which clears the form value and protects
   it from a retry;
-- a field the user has touched is never overwritten by a later run;
+- every saved field is protected in edit mode; replacing a photo or cutting out
+  an existing item does not auto-apply recognition;
 - recognition never writes on its own, and saving still requires a name and a
   photo;
 - a timeout, provider error, or malformed payload degrades to the local
@@ -499,7 +533,7 @@ Palette preferences are a transparent tie-breaker, not a model of the wearer:
 
 ### Deployment
 
-The Vite build is static. `base: './'` makes it portable to a GitHub Pages project URL (`https://<user>.github.io/wardrobe/`). The workflow in `.github/workflows/deploy.yml` builds `dist/` and deploys it with GitHub Pages. No server runtime is needed. `server/recognize.ts` is a reference file outside the client build; the Pages deploy ignores it, so the AI provider is only available if a deployer hosts that function separately.
+The Vite build is static. `base: './'` makes it portable to a GitHub Pages project URL (`https://<user>.github.io/wardrobe/`). The workflow in `.github/workflows/deploy.yml` builds `dist/` and deploys it with GitHub Pages. No server runtime is needed. `server/recognize.ts` is a reference file outside the client build; the Pages deploy ignores it, so the AI provider is only available if a deployer hosts that function separately. That reference function is not deployed here and has not been integration-tested against a live provider.
 
 ## Security and privacy
 
@@ -507,8 +541,14 @@ The Vite build is static. `base: './'` makes it portable to a GitHub Pages proje
   by the optional server function; any `VITE_*` value is public by definition.
 - In the default build, no user photos are uploaded. With
   `VITE_RECOGNITION_PROVIDER=ai`, a 1024 px WebP copy is posted to the deployer's
-  `/api/recognize`; the copy step fails safe by sending the original if the
-  browser cannot decode it, and the server enforces a 4 MB ceiling.
+  `/api/recognize`. If preparation fails, the original is never uploaded: the
+  app falls back to the local heuristic, and the server independently enforces a
+  body cap, a 4 MB decoded-image ceiling, and a real image-signature check.
+- The reference function has no authentication and no distributed rate limiting.
+  Its in-memory limiter is a single-instance safety valve, and its optional CORS
+  allowlist is not authentication. Before exposing a paid provider publicly, a
+  deployer must add platform/distributed abuse protection and a provider
+  spending cap; otherwise the endpoint is an open proxy to their key.
 - Weather coordinates are the only other network payload besides the cutout
   model download.
 - Export files will contain personal wardrobe data; warn the user before sharing.

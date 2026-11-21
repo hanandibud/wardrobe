@@ -17,7 +17,9 @@ export const heuristicProvider: RecognitionProvider = {
   source: 'heuristic',
 
   async recognize(hint: RecognitionHint): Promise<RecognitionResult> {
-    const colors = await extractPalette(hint.image)
+    // The add form has already measured the palette for its own display, so
+    // reuse it rather than decoding and clustering the same photo twice.
+    const colors = hint.palette ?? (await extractPalette(hint.image))
 
     // A blank palette is still a valid result: the caller keeps the form open
     // and the user types colors by hand. It is not treated as a hard failure.

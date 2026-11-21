@@ -181,14 +181,18 @@ export function emptyAttributes(): RecognitionAttributes {
 
 export function emptyConfidence(): RecognitionConfidence {
   return {
+    name: 0,
     category: 0,
     subcategory: 0,
+    colors: 0,
     pattern: 0,
     material: 0,
     fit: 0,
     formality: 0,
     warmth: 0,
     sleeve: 0,
+    seasons: 0,
+    occasions: 0,
   }
 }
 
@@ -216,21 +220,25 @@ export function parseRecognitionResponse(
   }
 
   const confidence: RecognitionConfidence = {
+    name: confidenceField(rawConfidence, 'name'),
     category: confidenceField(rawConfidence, 'category'),
     subcategory: confidenceField(rawConfidence, 'subcategory'),
+    colors: confidenceField(rawConfidence, 'colors'),
     pattern: confidenceField(rawConfidence, 'pattern'),
     material: confidenceField(rawConfidence, 'material'),
     fit: confidenceField(rawConfidence, 'fit'),
     formality: confidenceField(rawConfidence, 'formality'),
     warmth: confidenceField(rawConfidence, 'warmth'),
     sleeve: confidenceField(rawConfidence, 'sleeve'),
+    seasons: confidenceField(rawConfidence, 'seasons'),
+    occasions: confidenceField(rawConfidence, 'occasions'),
   }
 
-  const hasSignal =
-    attributes.category !== null ||
-    attributes.subcategory !== null ||
-    attributes.colors.length > 0 ||
-    attributes.nameSuggestion !== null
+  // Any recognized attribute is usable signal. Requiring a category, name, or
+  // color used to discard a perfectly useful material-only response.
+  const hasSignal = Object.values(attributes).some((value) =>
+    Array.isArray(value) ? value.length > 0 : value !== null,
+  )
 
   if (!hasSignal) {
     throw new Error('Recognition returned no usable attributes.')

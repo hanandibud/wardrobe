@@ -2,6 +2,21 @@
 
 A short, append-only record of what changed and why. Newest entries first.
 
+## 2026-11-20 — Recognition hardening: integrity, review, errors, images, server
+
+- Fixed edit-mode data loss: `toStoredRecognitionFields` now returns every optional key, using `undefined` for a cleared value so Dexie removes it. Clearing type/material/occasions persists, and changing category cannot leave an incompatible old type. Regression tests use `fake-indexeddb`.
+- Fixed saved-data overwrite: edit mode protects name, category, colors, pattern, material, fit, sleeve, occasions, warmth, formality, and seasons. Recognition is now an explicit **Analyze photo** action in edit mode; replacing a photo or cutting out an existing item no longer auto-applies predictions.
+- Fixed review accuracy: the panel is built from the patch that was actually applied, drops inconsistent category/type pairs, adds name/category rows, and labels every AI row as a model estimate rather than “Detected”.
+- Made the local palette authoritative: AI color guesses are no longer part of the applied patch or the review panel, so they cannot overwrite measured colors.
+- Hardened the recognition client: retries only network/transient 5xx failures, does not retry auth/4xx/rate-limit/timeout outcomes, surfaces `Retry-After`, aborts stale requests when a new photo is selected, reuses the measured palette, and guarantees the fallback cannot throw.
+- Hardened image preparation: explicit EXIF orientation (with a fallback), a 40 MP decoded-pixel cap, white matte for transparency, a 3.5 MB final-byte cap with one lower-quality retry, and `null` instead of uploading the original when preparation fails.
+- Hardened the reference server: 6 MB body cap before parsing, base64 and image-signature validation, 15-second upstream timeout, bounded output, safe `{ error, code }` responses, auth/rate-limit mapping, optional CORS allowlist, and a best-effort single-instance rate limiter. It remains **not deployed** and is not a public proxy; no live AI claim is made.
+- Updated the prompt to require null/empty values when uncertain, define formality and warmth scales, distinguish observations from recommendations, constrain subcategories, and state that confidence is not calibrated.
+- Added coverage for persistence clears, category changes, rejected predictions, saved-field protection, replacement/cutout behavior, model-estimate filtering, palette preservation, stale cancellation, transient-vs-permanent errors, image orientation/size limits, import/export, and server request validation. Suite is **274 tests across 19 files**.
+- `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` pass. Lint retains only the pre-existing `WeatherGlyph.tsx` warning; the build retains the pre-existing >500 kB chunk warning.
+
+**Next:** deployment architecture remains a separate decision. The AI path still requires a same-origin function and a real provider integration test before it can be described as working.
+
 ## 2026-11-19 — M5: a photo becomes a draft you can correct
 
 - Added `src/lib/recognition/` as a provider boundary: `types.ts` (attributes, confidence, 0.6 review threshold), `vocab.ts` (one closed vocabulary plus category → type map), `parse.ts` (the validation boundary), `client.ts` (provider selection, 20-second timeout, one retry, fallback), `image.ts` (remote-request downscale), `draft.ts` (pure touched-field patch and form → stored fields), and two providers.

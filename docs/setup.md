@@ -131,8 +131,8 @@ Keep experiment images and outputs out of Git. You can import the resulting tran
 
 Not needed — the app recognizes colors locally, with no key and no network. The
 rest of the attributes are editable by hand. If you want a vision model to
-pre-fill type, pattern, material, fit, sleeve, and the scoring hints, there is
-an opt-in path:
+pre-fill the name, category, optional attributes, and scoring hints, there is an
+opt-in path:
 
 1. Deploy `server/recognize.ts` as a function at `/api/recognize` on a host you
    control. The file is a platform-neutral `Request → Response` handler; adapt
@@ -141,6 +141,10 @@ an opt-in path:
    - `RECOGNITION_API_KEY` — required, never committed.
    - `RECOGNITION_API_URL` — defaults to an OpenAI-compatible chat endpoint.
    - `RECOGNITION_MODEL` — defaults to `gpt-4o-mini`.
+   - `RECOGNITION_RATE_LIMIT_PER_MINUTE` — optional, default 20; `0` disables the
+     best-effort single-instance limiter.
+   - `RECOGNITION_ALLOWED_ORIGINS` — optional comma-separated CORS allowlist for
+     a cross-origin function host. This is not authentication.
 3. Set `VITE_RECOGNITION_PROVIDER=ai` in `.env.local` (or in the build
    environment) and rebuild. `.env.local` is gitignored.
 
@@ -152,18 +156,32 @@ VITE_RECOGNITION_PROVIDER=ai
 RECOGNITION_API_KEY=your-key
 RECOGNITION_API_URL=https://api.openai.com/v1/chat/completions
 RECOGNITION_MODEL=gpt-4o-mini
+RECOGNITION_RATE_LIMIT_PER_MINUTE=20
+# RECOGNITION_ALLOWED_ORIGINS=https://your-site.example
 ```
 
 What leaves the browser in this mode: one downscaled WebP (longest edge
-1024 px) posting `{ imageBase64, mimeType }`. The function then sends that image
-to the vision provider you configured. No wardrobe data, item names, or notes
-are sent. If the function is missing or fails, the app retries once and falls
-back to the local heuristic; recognition never blocks saving.
+1024 px) posting `{ imageBase64, mimeType }`. If the browser cannot prepare the
+image, the original is never uploaded; the app uses the local heuristic. The
+function then sends the image to the vision provider you configured. No wardrobe
+data, item names, or notes are sent. If the function fails with a network error
+or a transient 5xx, the app retries once and then falls back to the local
+heuristic; permanent 4xx, auth, rate-limit, and timeout outcomes go straight to
+the fallback. Recognition never blocks saving.
+
+**Do not expose this function as a public paid proxy.** The reference handler
+has a request-body cap, image-signature validation, a 15-second upstream
+timeout, safe error codes, and an in-memory rate limiter, but no authentication
+and no distributed rate limiting. Add platform-level abuse protection and a
+spending cap in the provider dashboard before enabling it publicly. CORS is not
+authentication.
 
 This path is outside the project's zero-dollar default and outside what the
 maintainer deploys to GitHub Pages. Check the provider's pricing and privacy
 terms before turning it on. Keep the key on the server: `VITE_` variables are
-compiled into the public JavaScript bundle.
+compiled into the public JavaScript bundle. The reference endpoint has not been
+exercised against a live vision provider in this repository; run a real
+integration test before relying on it.
 
 ## Free API notes
 

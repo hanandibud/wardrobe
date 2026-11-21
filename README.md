@@ -104,9 +104,12 @@ No Vercel, Supabase, or paid AI API is required. If the app later needs multi-de
 Every photo starts a draft. The shipped provider is local, keyless, and
 offline: it reuses the app's color extractor and fills **colors only**. Type,
 pattern, material, fit, sleeve, and the scoring hints stay blank rather than
-being guessed from pixels. The draft is ordinary editable form fields, fields
-with confidence ≤ 0.6 are marked "unsure", each reviewed row can be rejected,
-and nothing reaches IndexedDB until you press **Save to wardrobe**.
+being guessed from pixels. The draft is ordinary editable form fields. AI
+confidence is shown as a model estimate, not a calibrated probability; values
+at or below 0.6 are marked “low confidence”, each applied row can be rejected,
+and nothing reaches IndexedDB until you press **Save to wardrobe**. In edit mode
+recognition only runs from the explicit **Analyze photo** action, and saved
+fields are never overwritten. Locally measured colors remain authoritative.
 
 An optional vision path can fill the rest. Deploy [`server/recognize.ts`](server/recognize.ts)
 at `/api/recognize` on a host you control, then set:
@@ -119,12 +122,24 @@ VITE_RECOGNITION_PROVIDER=ai
 RECOGNITION_API_KEY=your-key
 RECOGNITION_API_URL=https://api.openai.com/v1/chat/completions
 RECOGNITION_MODEL=gpt-4o-mini
+RECOGNITION_RATE_LIMIT_PER_MINUTE=20
+# RECOGNITION_ALLOWED_ORIGINS=https://your-site.example
 ```
 
 The client validates the function's response through the same schema used for
 every provider. A payload like this fills the form; unknown values are dropped
 rather than trusted. The live GitHub Pages build stays on the local default and
 does not deploy this function.
+
+The reference endpoint has **not** been exercised against a live vision provider
+in this repository. Treat it as a starting point, and run a real provider
+integration test before relying on it.
+
+The reference function is **not** a production-ready public proxy. It caps the
+request body, validates image signatures, times out at 15 seconds, and has an
+in-memory single-instance limiter, but no authentication or distributed rate
+limiting. Add platform abuse protection and a provider spending cap before
+exposing a paid key publicly; CORS is not authentication.
 
 ```json
 {
@@ -155,12 +170,15 @@ does not deploy this function.
 }
 ```
 
-Confidence at or below 0.6 is shown as unsure. The request contains one
-downscaled WebP (longest edge 1024 px) as `{ imageBase64, mimeType }` and no
-wardrobe data. A timeout (20 s), provider error, or malformed response retries
-once, then falls back to the local heuristic with a visible warning. See
-[setup](docs/setup.md) for the server configuration and
-[ADR 0004](docs/decisions/0004-garment-recognition.md) for the trade-offs.
+Confidence is the model’s own 0–1 estimate, not a calibrated probability. Values
+at or below 0.6 are marked “low confidence”, and every applied row is labelled
+“model estimate”. The request contains one downscaled WebP (longest edge
+1024 px) as `{ imageBase64, mimeType }` and no wardrobe data. Network failures
+and transient 5xx responses retry once; timeouts, authentication failures, other
+4xx responses, rate limits, and cancellations do not. The result then falls back
+to the local heuristic with a visible warning. See [setup](docs/setup.md) for the
+server configuration and [ADR 0004](docs/decisions/0004-garment-recognition.md)
+for the trade-offs.
 
 ## Run it
 
@@ -253,8 +271,8 @@ screenshots/              documentation screenshots
 
 - Photos and wardrobe data are stored in IndexedDB in your browser.
 - In the default build, photos are never uploaded. Background removal, color extraction, and the heuristic recognizer run locally; only the cutout model file is downloaded.
-- If a site owner enables the optional AI recognizer (`VITE_RECOGNITION_PROVIDER=ai`), a downscaled 1024 px WebP copy is posted to their `/api/recognize` function and forwarded to the configured vision provider. The add form says so explicitly when that mode is active. No wardrobe data, names, or notes are sent.
-- The AI path keeps its API key in the server environment. No key is present in the client bundle, and no key is required for the default app.
+- If a site owner enables the optional AI recognizer (`VITE_RECOGNITION_PROVIDER=ai`), a downscaled 1024 px WebP copy is posted to their `/api/recognize` function and forwarded to the configured vision provider. The add form says so explicitly when that mode is active. No wardrobe data, names, or notes are sent. If the browser cannot prepare the image safely, the original is not uploaded and the app stays local.
+- The AI path keeps its API key in the server environment. No key is present in the client bundle, and no key is required for the default app. The reference function is not deployed by this project and is not a public proxy; a deployer must add abuse protection and a spending cap before enabling it.
 - The weather request sends only rounded coordinates to Open-Meteo, a keyless free service. The chosen place and last reading stay in `localStorage`. When you search for a city, the place name you type is sent to Open-Meteo's geocoder to find matching coordinates.
 - Skipped picks for the current day are kept in `localStorage` too; they never leave the browser.
 - The service worker caches the app shell (HTML, JavaScript, CSS, icons) in the browser’s Cache Storage. It never caches photos, API responses, or the cutout model.

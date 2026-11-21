@@ -1,7 +1,8 @@
-import type {
-  RecognitionHint,
-  RecognitionProvider,
-  RecognitionResult,
+import {
+  RecognitionHttpError,
+  type RecognitionHint,
+  type RecognitionProvider,
+  type RecognitionResult,
 } from '../types'
 import { parseRecognitionResponse } from '../parse'
 
@@ -46,9 +47,12 @@ export function createOpenAiCompatibleProvider(
       })
 
       if (!response.ok) {
-        const detail = await readErrorMessage(response)
-        throw new Error(
-          `Recognition request failed with ${response.status}. ${detail}`,
+        const detail = await readError(response)
+        throw new RecognitionHttpError(
+          `Recognition request failed with ${response.status}. ${detail.message}`,
+          response.status,
+          detail.code,
+          parseRetryAfter(response.headers.get('retry-after')),
         )
       }
 
@@ -83,14 +87,31 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary)
 }
 
-async function readErrorMessage(response: Response): Promise<string> {
+async function readError(
+  response: Response,
+): Promise<{ message: string; code?: string }> {
   try {
-    const body = (await response.json()) as { error?: unknown }
+    const body = (await response.json()) as {
+      error?: unknown
+      code?: unknown
+    }
     if (typeof body?.error === 'string' && body.error.length > 0) {
-      return body.error
+      return {
+        message: body.error,
+        code: typeof body.code === 'string' ? body.code : undefined,
+      }
     }
   } catch {
     // Fall through to a generic message.
   }
-  return 'Check the recognition function logs for details.'
+  return { message: 'Check the recognition function logs for details.' }
+}
+
+function parseRetryAfter(value: string | null): number | undefined {
+  if (!value) return undefined
+  const seconds = Number(value)
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.ceil(seconds)
+  const date = Date.parse(value)
+  if (Number.isNaN(date)) return undefined
+  return Math.max(0, Math.ceil((date - Date.now()) / 1000))
 }

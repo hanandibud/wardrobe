@@ -29,23 +29,32 @@ export interface RecognitionAttributes {
   occasions: OccasionSuggestion[]
 }
 
-/** 0-1 confidence per attribute. Fields without a score default to 0. */
+/**
+ * 0-1 model estimate per attribute. These are subjective model outputs, not
+ * calibrated probabilities. Fields without a score default to 0 so the UI
+ * treats them as low confidence rather than inventing certainty.
+ */
 export interface RecognitionConfidence {
+  name: number
   category: number
   subcategory: number
+  colors: number
   pattern: number
   material: number
   fit: number
   formality: number
   warmth: number
   sleeve: number
+  seasons: number
+  occasions: number
 }
 
 export type RecognitionField = keyof RecognitionConfidence
 
 /** Form fields whose recognized value the user can reject from the panel. */
 export type RecognitionClearField =
-  | 'colors'
+  | 'name'
+  | 'category'
   | 'subcategory'
   | 'pattern'
   | 'material'
@@ -55,6 +64,35 @@ export type RecognitionClearField =
   | 'warmth'
   | 'seasons'
   | 'occasions'
+
+/** An HTTP failure from the recognition endpoint, with a machine-readable code. */
+export class RecognitionHttpError extends Error {
+  readonly status: number
+  readonly code: string | undefined
+  /** Seconds the server asked the client to wait, when it provided a hint. */
+  readonly retryAfterSeconds: number | undefined
+
+  constructor(
+    message: string,
+    status: number,
+    code?: string,
+    retryAfterSeconds?: number,
+  ) {
+    super(message)
+    this.name = 'RecognitionHttpError'
+    this.status = status
+    this.code = code
+    this.retryAfterSeconds = retryAfterSeconds
+  }
+}
+
+/** The provider did not answer before the client's deadline. */
+export class RecognitionTimeoutError extends Error {
+  constructor() {
+    super('Recognition timed out.')
+    this.name = 'RecognitionTimeoutError'
+  }
+}
 
 export interface RecognitionResult {
   attributes: RecognitionAttributes
@@ -68,6 +106,12 @@ export interface RecognitionResult {
 /** The input every provider receives. Kept provider-agnostic on purpose. */
 export interface RecognitionHint {
   image: Blob
+  /**
+   * Colors already measured by the local palette extractor. The heuristic
+   * reuses them instead of decoding the image a second time; remote providers
+   * ignore them.
+   */
+  palette?: string[]
 }
 
 /**

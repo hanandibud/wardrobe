@@ -1,6 +1,5 @@
 import { AlertTriangle, RotateCcw, Sparkles, X } from 'lucide-react'
 import { useState } from 'react'
-import { nameColor } from '../lib/colors'
 import type { RecognitionPatch } from '../lib/recognition/draft'
 import type {
   RecognitionClearField,
@@ -15,6 +14,7 @@ import {
   SLEEVE_LABELS,
   SUBCATEGORY_LABELS,
 } from '../lib/recognition/vocab'
+import { CATEGORY_LABELS } from '../types'
 
 const chipClass =
   'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition'
@@ -22,12 +22,15 @@ const chipClass =
 const EMPTY_REJECTED_FIELDS: ReadonlySet<RecognitionClearField> = new Set()
 
 /**
- * The "recognized from your photo" review card.
+ * The "suggested from your photo" review card.
  *
  * Every value is already reflected in the editable form fields; this card only
- * reports what recognition found, how sure it was, and which predictions are
- * uncertain so the user knows to check them. Dismissing the card hides the
- * report but never changes the form — nothing is auto-saved.
+ * reports what recognition actually applied, how confident the model claimed to
+ * be, and which suggestions are uncertain. Dismissing the card hides the report
+ * but never changes the form — nothing is auto-saved.
+ *
+ * Confidence is the model's self-reported estimate, not a calibrated
+ * probability. The copy says so, and no row is ever labelled as verified.
  */
 export function RecognitionPanel({
   result,
@@ -75,17 +78,22 @@ export function RecognitionPanel({
 
   if (rows.length === 0 && !warning) return null
 
+  const isAi = result.source === 'ai'
+
   return (
     <div className="mt-3 rounded-2xl border border-line/80 bg-card p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="flex items-center gap-1.5 text-xs font-medium text-ink">
             <Sparkles className="h-3.5 w-3.5 text-accent" />
-            {result.source === 'ai' ? 'Recognized from your photo' : 'Detected from your photo'}
+            {isAi
+              ? 'Model suggestions from your photo'
+              : 'Measured from your photo'}
           </p>
           <p className="mt-0.5 text-[11px] leading-4 text-muted">
-            Filled into the form below. Reject or change anything wrong; nothing
-            is saved until you press Save.
+            {isAi
+              ? 'These are model estimates, not verified facts; confidence is the model’s own guess, not a calibrated probability. Reject or change anything wrong. Nothing is saved until you press Save.'
+              : 'Measured locally from the photo. Reject or change anything wrong; nothing is saved until you press Save.'}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
@@ -122,7 +130,7 @@ export function RecognitionPanel({
       <ul className="mt-3 flex flex-wrap gap-1.5">
         {rows.map((row) => (
           <li
-            key={row.label}
+            key={row.field}
             className={[
               chipClass,
               row.unsure
@@ -132,12 +140,16 @@ export function RecognitionPanel({
           >
             <span className="text-muted">{row.label}</span>
             <span>{row.value}</span>
-            {row.unsure && <span className="text-amber-700">· unsure</span>}
+            {isAi && (
+              <span className={row.unsure ? 'text-amber-700' : 'text-muted'}>
+                · {row.unsure ? 'low confidence' : 'model estimate'}
+              </span>
+            )}
             <button
               type="button"
               onClick={() => reject(row.field)}
-              aria-label={`Reject ${row.label} guess`}
-              title="Reject this guess"
+              aria-label={`Reject ${row.label} suggestion`}
+              title="Reject this suggestion"
               className="ml-0.5 rounded-full p-0.5 text-muted transition hover:bg-black/5 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
             >
               <X className="h-3 w-3" />
@@ -162,12 +174,20 @@ function buildRows(
 ): RecognitionRow[] {
   const rows: RecognitionRow[] = []
 
-  if (patch.colors && patch.colors.length > 0) {
+  if (patch.name) {
     rows.push({
-      label: 'Colors',
-      value: patch.colors.map((color) => nameColor(color)).join(', '),
-      unsure: false,
-      field: 'colors',
+      label: 'Name',
+      value: patch.name,
+      unsure: isLowConfidence('name'),
+      field: 'name',
+    })
+  }
+  if (patch.category) {
+    rows.push({
+      label: 'Category',
+      value: CATEGORY_LABELS[patch.category],
+      unsure: isLowConfidence('category'),
+      field: 'category',
     })
   }
   if (patch.subcategory) {
@@ -230,7 +250,7 @@ function buildRows(
     rows.push({
       label: 'Seasons',
       value: patch.seasons.join(', '),
-      unsure: false,
+      unsure: isLowConfidence('seasons'),
       field: 'seasons',
     })
   }
@@ -240,7 +260,7 @@ function buildRows(
       value: patch.occasions
         .map((occasion) => OCCASION_SUGGESTION_LABELS[occasion])
         .join(', '),
-      unsure: false,
+      unsure: isLowConfidence('occasions'),
       field: 'occasions',
     })
   }

@@ -94,8 +94,8 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 - [x] Local heuristic provider (colors only, offline, no key)
 - [x] Optional OpenAI-compatible provider behind a server-side function
 - [x] Strict, tolerant schema validation with unknown values dropped
-- [x] Timeout, one retry, and heuristic fallback with a warning
-- [x] Editable review panel with confidence marks and per-prediction reject
+- [x] Timeout, a bounded retry for network/transient 5xx failures, and heuristic fallback with a warning
+- [x] Editable review panel with model-estimate marks and per-prediction reject
 - [x] New optional item fields: type, pattern, material, fit, sleeve, occasions
 - [x] Attributes persist, appear in item details, and ride along in v2 backups
 - [x] Unit tests for parsing, providers, retries, fallback, and drafts
@@ -103,7 +103,7 @@ Each milestone is a shippable slice, not a folder of half-finished experiments. 
 **Acceptance:** add a garment photo with no configuration; colors fill in
 locally, every field remains editable, and saving works with recognition
 unavailable. With the optional AI function deployed, a valid response fills the
-extra attributes, an uncertain one is marked unsure, a malformed one is
+extra attributes, an uncertain one is marked “low confidence”, a malformed one is
 discarded and falls back, and nothing saves until the user confirms.
 
 **Delivered (2026-11-19):** the default build recognizes colors with the same
@@ -114,6 +114,17 @@ auto-saves, never overwrites a field the user touched, and a failed request
 falls back to the still-working manual form. Five new optional fields are
 stored without a Dexie migration because none is indexed, and the backup stays
 format v2 so existing files still import. See ADR 0004.
+
+**Hardened (2026-11-20):** edit-mode clears now persist, changing category drops
+an incompatible type, and every saved field is protected from automatic
+prediction. Recognition is an explicit action in edit mode; replacing a photo or
+cutting out an item does not apply it. The review panel is built from the applied
+patch, the local measured palette remains the only color source, retries are
+limited to network/transient failures, stale requests are aborted, and remote
+image preparation fails closed. The reference server gained body/image limits,
+signature checks, safe errors, timeout handling, and best-effort abuse controls.
+Live AI recognition remains unverified until a real provider integration test
+succeeds.
 
 ## Later, only if the core is solid
 
